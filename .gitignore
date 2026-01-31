@@ -1,0 +1,14 @@
+# Build artifacts
+*.o
+*.obj
+*.iso
+*.bin
+*.elf
+*.efi
+
+# Build directories
+build/
+dist/
+
+# Other
+*.DS_Store
