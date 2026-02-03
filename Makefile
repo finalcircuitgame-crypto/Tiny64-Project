@@ -96,12 +96,15 @@ image: all
 
 run: image
 	@if [ ! -f $(OVMF_VARS_COPY) ]; then cp $(OVMF_VARS) $(OVMF_VARS_COPY); chmod +w $(OVMF_VARS_COPY); fi
+	$(eval WIN_HOST := $(shell grep nameserver /etc/resolv.conf 2>/dev/null | head -1 | awk '{print $$2}'))
+	$(if $(WIN_HOST),,$(eval WIN_HOST := 127.0.0.1))
+	@echo "Sending packets to Windows host: $(WIN_HOST):60000"
 	qemu-system-x86_64 -m 256M \
 	-drive if=pflash,format=raw,unit=0,file=$(OVMF_CODE),readonly=on \
 	-drive if=pflash,format=raw,unit=1,file=$(OVMF_VARS_COPY) \
 	-drive file=$(DISK_IMG),format=raw,if=ide \
 	-serial stdio \
-	-netdev socket,id=n0,udp=127.0.0.1:60000,localaddr=0.0.0.0:60001 \
+	-netdev socket,id=n0,udp=$(WIN_HOST):60000,localaddr=0.0.0.0:60001 \
 	-device e1000,netdev=n0
 
 
