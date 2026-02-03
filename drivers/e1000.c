@@ -126,7 +126,11 @@ void e1000_init(uint8_t bus, uint8_t slot, uint8_t func) {
 }
 
 void e1000_send_packet(const void* data, uint16_t len) {
-    while (!(tx_descs[tx_cur].status & 0x1)); // Wait for DD (Descriptor Done) bit
+    printk("[TX] Sending %d bytes, tx_cur=%d, status=0x%x\n", len, tx_cur, tx_descs[tx_cur].status);
+    while (!(tx_descs[tx_cur].status & 0x1)) {
+        // Waiting for descriptor done
+    }
+    printk("[TX] Descriptor ready, copying data...\n");
 
     memcpy((void*)tx_descs[tx_cur].addr, data, len);
     tx_descs[tx_cur].length = len;
@@ -137,6 +141,7 @@ void e1000_send_packet(const void* data, uint16_t len) {
 
     tx_cur = (tx_cur + 1) % E1000_NUM_TX_DESC;
     e1000_write(REG_TDT, tx_cur);
+    printk("[TX] Packet queued, new TDT=%d\n", tx_cur);
 }
 
 int e1000_receive_packet(void* buffer, uint16_t max_len) {

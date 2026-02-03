@@ -44,7 +44,7 @@ def listen_tcp_standard(ip, port):
         print(f"[!] TCP Error: {e}")
 
 if __name__ == "__main__":
-    UDP_PORT = 60000
+    UDP_PORT = 60001
     TCP_PORT = 5001
     
     # Start threads

@@ -1,6 +1,6 @@
 @echo off
-REM Tiny64 – Windows launch script (TAP networking)
-REM Run in an elevated PowerShell / Command Prompt because opening TAP requires admin.
+REM Tiny64 – Windows launch script (SLIRP networking with port forwarding)
+REM No admin required for SLIRP mode
 
 setlocal enabledelayedexpansion
 
@@ -16,13 +16,13 @@ set OVMF_CODE=%SCRIPT_DIR%OVMF_CODE.fd
 set OVMF_VARS=%SCRIPT_DIR%build\OVMF_VARS.fd
 set DISK_IMG=%SCRIPT_DIR%build\disk.img
 
-REM Launch QEMU with TAP adapter tap0 (created via TAP-Windows driver)
+REM Launch QEMU with SLIRP networking (user mode) - forwards UDP to host
 "qemu-system-x86_64.exe" -m 256M ^
   -drive if=pflash,format=raw,unit=0,file="%OVMF_CODE%",readonly=on ^
   -drive if=pflash,format=raw,unit=1,file="%OVMF_VARS%" ^
   -drive file="%DISK_IMG%",format=raw,if=ide ^
   -serial stdio ^
-  -netdev tap,id=n0,ifname=tap0,script=no,downscript=no ^
+  -netdev user,id=n0,hostfwd=udp::60001-:60001 ^
   -device e1000,netdev=n0
 
 endlocal
