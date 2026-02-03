@@ -3,6 +3,7 @@
 # Tools
 EFI_CC  ?= x86_64-w64-mingw32-gcc
 CC      ?= gcc
+CXX     ?= g++
 AS      ?= as
 LD      ?= ld
 OBJCOPY ?= objcopy
@@ -24,6 +25,9 @@ endif
 # Flags
 CFLAGS     := -O2 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone -g \
               -Iinclude -Iarch/x86/include
+CXXFLAGS   := -O2 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone -g \
+              -fno-exceptions -fno-rtti -nostdlib -fno-threadsafe-statics \
+              -Iinclude -Iarch/x86/include
 EFI_CFLAGS := -O2 -Iboot/efi -Iinclude -ffreestanding -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables \
               -mno-red-zone -mabi=ms -DEFI_FUNCTION_WRAPPER -fshort-wchar
 LDFLAGS    := -nostdlib -z max-page-size=0x1000
@@ -40,13 +44,23 @@ DISK_IMG   := $(BUILD)/disk.img
 OVMF_VARS_COPY := $(BUILD)/OVMF_VARS.fd
 
 # Source files
-KERNEL_SRC := $(wildcard kernel/*.c) \
+KERNEL_SRC := $(sort $(wildcard kernel/*.c) \
+              $(wildcard kernel/*.cpp) \
+              $(wildcard kernel/mm/*.c) \
+              $(wildcard kernel/net/*.c) \
+              $(wildcard kernel/fonts/*.c) \
+              $(wildcard kernel/gui/*.cpp) \
               $(wildcard lib/*.c) \
               $(wildcard drivers/*.c) \
-              $(wildcard $(ARCH_DIR)/kernel/*.c)
+              $(wildcard drivers/pci/*.c) \
+              $(wildcard drivers/serial/*.c) \
+              $(wildcard drivers/net/*.c) \
+              $(wildcard drivers/usb/*.c) \
+              $(wildcard drivers/rtc/*.c) \
+              $(wildcard $(ARCH_DIR)/kernel/*.c))
 KERNEL_ASM := $(wildcard $(ARCH_DIR)/boot/*.S) \
               $(wildcard $(ARCH_DIR)/kernel/*.S)
-KERNEL_OBJ := $(patsubst %.c,$(BUILD)/%.o,$(KERNEL_SRC)) \
+KERNEL_OBJ := $(patsubst %,$(BUILD)/%.o,$(basename $(KERNEL_SRC))) \
               $(patsubst %.S,$(BUILD)/%.o,$(KERNEL_ASM))
 
 EFI_SRC := $(wildcard boot/efi/*.c)
@@ -60,6 +74,10 @@ all: $(EFI_BIN) $(KERNEL_ELF)
 $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD)/%.o: %.S
 	@mkdir -p $(dir $@)
@@ -105,7 +123,8 @@ run: image
 	-drive file=$(DISK_IMG),format=raw,if=ide \
 	-serial stdio \
 	-netdev socket,id=n0,udp=$(WIN_HOST):60000,localaddr=0.0.0.0:60001 \
-	-device e1000,netdev=n0
+	-device e1000,netdev=n0 \
+	-device qemu-xhci -device usb-kbd
 
 
 clean:

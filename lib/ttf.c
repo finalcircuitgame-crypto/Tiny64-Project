@@ -1,4 +1,4 @@
-#include <kernel/heap.h>
+#include <kernel/mm/heap.h>
 #include <lib/string.h>
 
 // Math functions from lib/math.c
