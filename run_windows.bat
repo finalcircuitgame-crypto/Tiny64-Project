@@ -12,4 +12,5 @@ if not exist %OVMF_PATH% (
 qemu-system-x86_64 ^
     -drive format=raw,file=dist/tiny64.img ^
     -bios %OVMF_PATH% ^
+    -device qemu-xhci ^
     -serial stdio

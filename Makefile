@@ -26,9 +26,12 @@ KERNEL_ELF = $(DISTDIR)/kernel.elf
 DISK_IMG = $(DISTDIR)/tiny64.img
 
 # Kernel Objects
-KERNEL_SRCS = $(wildcard $(KERNELDIR)/*.c)
-KERNEL_ASMS = $(wildcard $(KERNELDIR)/*.s)
-KERNEL_OBJS = $(patsubst $(KERNELDIR)/%.c, $(OBJDIR)/%.o, $(KERNEL_SRCS)) \
+# Recursively find all C and S files
+KERNEL_SRCS := $(shell find $(KERNELDIR) -name "*.c")
+KERNEL_ASMS := $(shell find $(KERNELDIR) -name "*.s")
+
+# Map to object files in OBJDIR, maintaining directory structure
+KERNEL_OBJS := $(patsubst $(KERNELDIR)/%.c, $(OBJDIR)/%.o, $(KERNEL_SRCS)) \
               $(patsubst $(KERNELDIR)/%.s, $(OBJDIR)/%_asm.o, $(KERNEL_ASMS))
 FONT_OBJ = $(OBJDIR)/font.o
 
@@ -39,22 +42,27 @@ setup:
 
 # Build Bootloader
 $(BOOTLOADER_EFI): $(BOOTDIR)/main.c
+	@mkdir -p $(dir $(OBJDIR)/boot_main.o)
 	$(CC) $(CFLAGS_EFI) -c $< -o $(OBJDIR)/boot_main.o
 	$(LD) $(LDFLAGS_EFI) $(OBJDIR)/boot_main.o -o $(OBJDIR)/boot_main.so -lgnuefi -lefi
 	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .reloc --target=efi-app-x86_64 $(OBJDIR)/boot_main.so $@
 
 # Embed Font
 $(FONT_OBJ): CGA.F08
+	@mkdir -p $(dir $@)
 	$(OBJCOPY) -I binary -O elf64-x86-64 -B i386 $< $@
 
 # Build Kernel
 $(KERNEL_ELF): $(KERNEL_OBJS) $(FONT_OBJ)
 	$(LD) $(LDFLAGS_KERNEL) $(KERNEL_OBJS) $(FONT_OBJ) -o $@
 
+# Pattern rules for nested kernel directories
 $(OBJDIR)/%.o: $(KERNELDIR)/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS_KERNEL) -c $< -o $@
 
 $(OBJDIR)/%_asm.o: $(KERNELDIR)/%.s
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS_KERNEL) -c $< -o $@
 
 # Create Disk Image
