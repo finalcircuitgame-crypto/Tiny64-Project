@@ -52,7 +52,7 @@ void network_get_mac(uint8_t mac[6]) {
 
 void network_get_ip(uint8_t ip[4]) {
     // Mock IP for now
-    ip[0] = 172; ip[1] = 16; ip[2] = 6; ip[3] = 222;
+    ip[0] = 10; ip[1] = 0; ip[2] = 2; ip[3] = 15;
 }
 
 extern void e1000e_send_raw_broadcast_test(void);
@@ -206,9 +206,12 @@ int xhci_bios_handover(uintptr_t base_addr) {
   return 1;
 }
 
-extern int qemu_xhci_init(uintptr_t base, uint8_t bus, uint8_t dev, uint8_t func);
 extern int g_using_qemu_xhci;
 extern int is_qemu(void);
+
+#if USE_QEMU_XHCI
+extern int qemu_xhci_init(uintptr_t base, uint8_t bus, uint8_t dev, uint8_t func);
+#endif
 
 void pci_init() {
   serial_write_str("PCI: Scanning all buses...\r\n");
@@ -284,6 +287,12 @@ void pci_init() {
           serial_write_str("e1000: Using legacy e1000 driver\r\n");
           e1000_enable_busmaster(dev->bus, dev->device, dev->function);
           e1000_init(mmio_virt);
+          e1000_arp_probe_gateway();
+          for (int i = 0; i < 2000; i++) {
+            e1000_poll_rx();
+            for (volatile int j = 0; j < 1000; j++)
+              ;
+          }
           e1000_send_raw_broadcast_test();
           serial_write_str("PCI: Network Test Packet Heard Successfully (e1000)\r\n");
           log_hook = e1000_net_log_callback;
@@ -375,8 +384,13 @@ void pci_init() {
     if (xhci_bios_handover(g_pending_xhci_mmio)) {
       int r;
       if (is_qemu() || g_pending_xhci_vendor == 0x1b36 || g_pending_xhci_vendor == 0x1234) {
+#if USE_QEMU_XHCI
           r = qemu_xhci_init(g_pending_xhci_mmio, g_pending_xhci_bus, g_pending_xhci_dev, g_pending_xhci_func);
           if (r == 0) g_using_qemu_xhci = 1;
+#else
+          r = xhci_init(g_pending_xhci_mmio, g_pending_xhci_bus, g_pending_xhci_dev, g_pending_xhci_func);
+          if (r == 0) g_using_qemu_xhci = 0;
+#endif
       } else {
           r = xhci_init(g_pending_xhci_mmio, g_pending_xhci_bus, g_pending_xhci_dev, g_pending_xhci_func);
           if (r == 0) g_using_qemu_xhci = 0;

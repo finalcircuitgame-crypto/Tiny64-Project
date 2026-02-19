@@ -101,6 +101,12 @@ void kfree(void* ptr) {
     }
 }
 
+size_t ksize(void* ptr) {
+    if (!ptr) return 0;
+    heap_node_t* node = (heap_node_t*)((uint8_t*)ptr - sizeof(heap_node_t));
+    return node->size;
+}
+
 size_t kmalloc_checkpoint(void) {
     return heap_offset;
 }

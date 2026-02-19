@@ -16,6 +16,11 @@ typedef struct {
     uint64_t p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_align;
 } Elf64_Phdr;
 
+typedef struct {
+    void* doom1_wad;
+    UINT64 doom1_wad_size;
+} BootFiles;
+
 #define PT_LOAD 1
 static Framebuffer g_fb;
 
@@ -60,6 +65,46 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         ConOut->OutputString(ConOut, (CHAR16 *)L"RECOVERY file detected. Booting in Recovery Mode...\r\n");
         boot_flags |= 1;
         recoveryFile->Close(recoveryFile);
+    }
+
+    // Optional: TRIAL mode marker skips the wizard and goes straight to desktop.
+    EFI_FILE_PROTOCOL *trialFile;
+    status = root->Open(root, &trialFile, (CHAR16 *)L"\\TRIAL", EFI_FILE_MODE_READ, 0);
+    if (!EFI_ERROR(status)) {
+        ConOut->OutputString(ConOut, (CHAR16 *)L"TRIAL file detected. Skipping Wizard...\r\n");
+        boot_flags |= 2;
+        trialFile->Close(trialFile);
+    }
+
+    // Optional: Load Doom IWAD into memory for the kernel (RamFS injection)
+    BootFiles* boot_files = NULL;
+    EFI_FILE_PROTOCOL* wadFile = NULL;
+    status = root->Open(root, &wadFile, (CHAR16 *)L"\\doom1.wad", EFI_FILE_MODE_READ, 0);
+    if (!EFI_ERROR(status)) {
+        EFI_GUID fiGuid = EFI_FILE_INFO_GUID;
+        UINTN infoSize = 0;
+        wadFile->GetInfo(wadFile, &fiGuid, &infoSize, NULL);
+        if (infoSize > 0) {
+            EFI_FILE_INFO* finfo = NULL;
+            if (!EFI_ERROR(BS->AllocatePool(EfiLoaderData, infoSize, (void**)&finfo))) {
+                if (!EFI_ERROR(wadFile->GetInfo(wadFile, &fiGuid, &infoSize, finfo))) {
+                    UINTN wadSize = (UINTN)finfo->FileSize;
+                    void* wadBuf = NULL;
+                    if (!EFI_ERROR(BS->AllocatePool(EfiLoaderData, wadSize, &wadBuf))) {
+                        UINTN rd = wadSize;
+                        if (!EFI_ERROR(wadFile->Read(wadFile, &rd, wadBuf)) && rd == wadSize) {
+                            if (!EFI_ERROR(BS->AllocatePool(EfiLoaderData, sizeof(BootFiles), (void**)&boot_files))) {
+                                boot_files->doom1_wad = wadBuf;
+                                boot_files->doom1_wad_size = wadSize;
+                                ConOut->OutputString(ConOut, (CHAR16 *)L"Loaded doom1.wad into memory.\r\n");
+                            }
+                        }
+                    }
+                }
+                BS->FreePool(finfo);
+            }
+        }
+        wadFile->Close(wadFile);
     }
 
     // 3. Load Kernel.elf
@@ -142,10 +187,10 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     
     // ABI: MS x64 (UEFI) -> SysV (Kernel)
     // Args: RCX, RDX, R8, R9, R10 -> RDI, RSI, RDX, RCX, R8
-    typedef void (*kernel_entry_t)(Framebuffer *, void*, UINTN, UINTN, UINTN);
+    typedef void (*kernel_entry_t)(Framebuffer *, void*, UINTN, UINTN, UINTN, void*);
     kernel_entry_t kernel_entry = (kernel_entry_t)entry_phys;
     
-    kernel_entry(&g_fb, mMap, mSize, dSize, boot_flags);
+    kernel_entry(&g_fb, mMap, mSize, dSize, boot_flags, boot_files);
 
     while(1) {
         __asm__ volatile ("hlt");

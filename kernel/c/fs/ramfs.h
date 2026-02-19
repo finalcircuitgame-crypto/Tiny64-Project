@@ -23,6 +23,7 @@ void ramfs_init();
 RamNode* ramfs_create(const char* name, uint8_t type);
 RamNode* ramfs_get_root();
 void ramfs_write_file(RamNode* file, const char* data);
+void ramfs_write_file_bin(RamNode* file, const void* data, uint32_t size);
 
 #ifdef __cplusplus
 }

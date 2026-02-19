@@ -5,13 +5,20 @@
 #include "doom.h"
 #include "task_manager.h"
 #include "device_manager.h"
-#include "window_manager.h"
 #include "settings.h"
-#include "explorer_icon.h"
+#include "browser.h"
+#include "window_manager.h"
 #include "app_icons.h"
-#include "../graphics/renderer.h"
+#include "../utils/persistence.h"
+#include "../utils/hardware.h"
+
+extern "C" {
+#include "../../c/drivers/platform/rtc.h"
 #include "../../c/drivers/hid/input.h"
 #include "../../c/drivers/usb/usb.h"
+#include "../../c/drivers/network/e1000.h"
+#include "../../c/network/tcp_client.h"
+}
 #include "../../c/scheduler/scheduler.h"
 #include "../../c/drivers/platform/rtc.h"
 #include "../utils/persistence.h"
@@ -35,9 +42,14 @@ extern "C" void desktop_loop(Framebuffer* fb) {
     int wallpaper = Persistence::LoadWallpaper();
 
     // UI Colors & Background
-    uint32_t bg_color = (theme == 0) ? COLOR_TINY_BLUE : (theme == 2 ? 0xFF888888 : 0xFF000000);
-    if (wallpaper == 1) bg_color = 0xFF1A1A2E; // Deep Space
-    if (wallpaper == 2) bg_color = 0xFF2D3436; // Modern Dark
+    auto apply_appearance = [&](int cur_theme, int cur_wallpaper) {
+        uint32_t c = (cur_theme == 0) ? COLOR_TINY_BLUE : (cur_theme == 2 ? 0xFF888888 : 0xFF000000);
+        if (cur_wallpaper == 1) c = 0xFF1A1A2E; // Deep Space
+        if (cur_wallpaper == 2) c = 0xFF2D3436; // Modern Dark
+        return c;
+    };
+
+    uint32_t bg_color = apply_appearance(theme, wallpaper);
     
     uint32_t taskbar_color = 0xCC2C3E50; 
     
@@ -50,6 +62,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
     TaskManager taskmgr(200, 200, 450, 300);
     DeviceManager devmgr(50, 50, 500, 400);
     SettingsWindow settings(250, 50, 500, 400);
+    BrowserWindow browser(120, 80, 720, 520);
     
     // Start closed
     explorer.SetClosed(true);
@@ -59,6 +72,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
     taskmgr.SetClosed(true);
     devmgr.SetClosed(true);
     settings.SetClosed(true);
+    browser.SetClosed(true);
 
     wm.AddWindow(&explorer);
     wm.AddWindow(&terminal);
@@ -67,6 +81,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
     wm.AddWindow(&taskmgr);
     wm.AddWindow(&devmgr);
     wm.AddWindow(&settings);
+    wm.AddWindow(&browser);
 
     bool start_menu_open = false;
     float menu_anim = 0.0f; // 0.0 to 1.0
@@ -77,17 +92,29 @@ extern "C" void desktop_loop(Framebuffer* fb) {
 
     while (true) {
         usb_poll();
+        e1000_poll_rx();
+        tcp_poll();
         input_mouse_get_state(&ms);
         
         bool left_btn = (ms.buttons & 1);
         bool btn_pressed = left_btn && !prev_left_btn; // Rising edge
         bool btn_released = !left_btn && prev_left_btn; // Falling edge
         
-        // Refresh settings periodically or on certain events
-        wallpaper = Persistence::LoadWallpaper();
-        if (wallpaper == 0) bg_color = COLOR_TINY_BLUE;
-        else if (wallpaper == 1) bg_color = 0xFF1A1A2E;
-        else if (wallpaper == 2) bg_color = 0xFF2D3436;
+        // Refresh settings periodically (avoid doing filesystem reads every frame)
+        static int settings_refresh = 0;
+        settings_refresh++;
+        if ((settings_refresh % 120) == 0) {
+            int new_wallpaper = Persistence::LoadWallpaper();
+            int new_theme = Persistence::LoadTheme();
+            const char* new_user = Persistence::LoadUsername();
+
+            if (new_wallpaper != wallpaper || new_theme != theme) {
+                wallpaper = new_wallpaper;
+                theme = new_theme;
+                bg_color = apply_appearance(theme, wallpaper);
+            }
+            user = new_user;
+        }
 
         // Always update mouse position
         if (ms.has_abs) {
@@ -144,7 +171,9 @@ extern "C" void desktop_loop(Framebuffer* fb) {
                                                     if (!check_app_click(doom))
                                                         if (!check_app_click(taskmgr))
                                                             if (!check_app_click(devmgr))
-                                                                check_app_click(settings);                }
+                                                                if (!check_app_click(settings))
+                                                                    check_app_click(browser);
+                }
             } else if (start_menu_open) {
                 // Menu Clicks (use animated Y)
                 int current_menu_y = fb->height - 45 - (int)(450 * menu_anim);
@@ -175,9 +204,10 @@ extern "C" void desktop_loop(Framebuffer* fb) {
         // Windows
         wm.DrawAll(renderer);
 
-        // Taskbar
+        // Taskbar (with subtle shadow)
         int tb_h = 45;
         int tb_y = fb->height - tb_h;
+        renderer.fill_rect(0, tb_y - 4, fb->width, 4, 0x44000000);
         renderer.fill_rect(0, tb_y, fb->width, tb_h, taskbar_color);
         
         int icon_x = 10;
@@ -213,9 +243,15 @@ extern "C" void desktop_loop(Framebuffer* fb) {
         draw_app_icon(taskmgr.IsClosed(), taskmgr.IsMinimized(), "Task Mgr", icon_taskmgr_data, 0xFFC0392B, icon_x);
         draw_app_icon(devmgr.IsClosed(), devmgr.IsMinimized(), "Devices", icon_devmgr_data, 0xFF16A085, icon_x);
         draw_app_icon(settings.IsClosed(), settings.IsMinimized(), "Settings", icon_settings_data, 0xFF7F8C8D, icon_x);
+        draw_app_icon(browser.IsClosed(), browser.IsMinimized(), "Browser", icon_explorer_data, 0xFF3498DB, icon_x);
         
         // Network Status Icon
         renderer.draw_image(icon_ethernet_data, fb->width - 130, tb_y + 7, 32, 32);
+
+        // User
+        if (user) {
+            renderer.draw_string(user, fb->width - 260, tb_y + 15, 0xFFFFFFFF, 1);
+        }
 
         // Clock (Real RTC)
         rtc_time_t now;
@@ -242,6 +278,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
                 {"APPLICATIONS", 0, -1},
                 {"File Explorer", 1, 0},
                 {"Terminal", 1, 1},
+                {"Browser", 1, 10},
                 {"Notepad", 1, 5},
                 {"DOOM Platinum", 1, 6},
                 {"", 2, -1},
@@ -256,7 +293,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
             };
 
             int current_y = menu_y + 45;
-            for (int i = 0; i < 15; i++) {
+            for (int i = 0; i < 16; i++) {
                 if (items[i].type == 0) {
                     renderer.draw_string(items[i].label, 25, current_y, 0xFF95A5A6, 1);
                     current_y += 20;
@@ -268,6 +305,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
                             int aid = items[i].action_id;
                             if (aid == 0) { explorer.SetClosed(false); explorer.SetMinimized(false); }
                             if (aid == 1) { terminal.SetClosed(false); terminal.SetMinimized(false); }
+                            if (aid == 10) { browser.SetClosed(false); browser.SetMinimized(false); }
                             if (aid == 5) { notepad.SetClosed(false); notepad.SetMinimized(false); }
                             if (aid == 6) { doom.SetClosed(false); doom.SetMinimized(false); }
                             if (aid == 2) { taskmgr.SetClosed(false); taskmgr.SetMinimized(false); }
@@ -297,13 +335,14 @@ extern "C" void desktop_loop(Framebuffer* fb) {
         Shortcut shortcuts[] = {
             {"Computer", 20, 20, 0, icon_explorer_data, 0xFF3498DB},
             {"Terminal", 20, 100, 1, icon_terminal_data, 0xFF273C75},
-            {"Notepad", 20, 180, 5, icon_notepad_data, 0xFFF1C40F},
-            {"DOOM", 20, 260, 6, nullptr, 0xFFC0392B},
-            {"Network", 20, 340, 7, icon_ethernet_data, 0xFF3498DB},
-            {"Settings", 20, 420, 4, icon_settings_data, 0xFF7F8C8D}
+            {"Browser", 20, 180, 10, icon_explorer_data, 0xFF3498DB},
+            {"Notepad", 20, 260, 5, icon_notepad_data, 0xFFF1C40F},
+            {"DOOM", 20, 340, 6, nullptr, 0xFFC0392B},
+            {"Network", 20, 420, 7, icon_ethernet_data, 0xFF3498DB},
+            {"Settings", 20, 500, 4, icon_settings_data, 0xFF7F8C8D}
         };
 
-        for(int i=0; i<6; i++) {
+        for(int i=0; i<7; i++) {
             bool hover = (mouseX >= shortcuts[i].x && mouseX <= shortcuts[i].x + 60 && mouseY >= shortcuts[i].y && mouseY <= shortcuts[i].y + 70);
             if (hover) {
                 renderer.draw_rounded_rect(shortcuts[i].x - 5, shortcuts[i].y - 5, 70, 80, 5, 0x33FFFFFF);
@@ -311,6 +350,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
                    int aid = shortcuts[i].action_id;
                    if (aid == 0) { explorer.SetClosed(false); explorer.SetMinimized(false); }
                    if (aid == 1) { terminal.SetClosed(false); terminal.SetMinimized(false); }
+                   if (aid == 10) { browser.SetClosed(false); browser.SetMinimized(false); }
                    if (aid == 5) { notepad.SetClosed(false); notepad.SetMinimized(false); }
                    if (aid == 6) { doom.SetClosed(false); doom.SetMinimized(false); }
                    if (aid == 4) { settings.SetClosed(false); settings.SetMinimized(false); }

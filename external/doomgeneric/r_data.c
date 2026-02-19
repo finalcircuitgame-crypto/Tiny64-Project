@@ -236,6 +236,8 @@ void R_GenerateComposite (int texnum)
     column_t*		patchcol;
     short*		collump;
     unsigned short*	colofs;
+
+    int wad_numlumps = (int) numlumps;
 	
     texture = textures[texnum];
 
@@ -253,6 +255,10 @@ void R_GenerateComposite (int texnum)
 	 i<texture->patchcount;
 	 i++, patch++)
     {
+	if (patch->patch < 0 || patch->patch >= wad_numlumps)
+	{
+	    I_Error("R_GenerateComposite: bad patch lump=%d (numlumps=%d) tex=%.8s", patch->patch, wad_numlumps, texture->name);
+	}
 	realpatch = W_CacheLumpNum (patch->patch, PU_CACHE);
 	x1 = patch->originx;
 	x2 = x1 + SHORT(realpatch->width);
@@ -303,6 +309,8 @@ void R_GenerateLookup (int texnum)
     int			i;
     short*		collump;
     unsigned short*	colofs;
+
+    int wad_numlumps = (int) numlumps;
 	
     texture = textures[texnum];
 
@@ -325,6 +333,10 @@ void R_GenerateLookup (int texnum)
 	 i<texture->patchcount;
 	 i++, patch++)
     {
+	if (patch->patch < 0 || patch->patch >= wad_numlumps)
+	{
+	    I_Error("R_GenerateLookup: bad patch lump=%d (numlumps=%d) tex=%.8s", patch->patch, wad_numlumps, texture->name);
+	}
 	realpatch = W_CacheLumpNum (patch->patch, PU_CACHE);
 	x1 = patch->originx;
 	x2 = x1 + SHORT(realpatch->width);
@@ -585,10 +597,16 @@ void R_InitTextures (void)
 	{
 	    patch->originx = SHORT(mpatch->originx);
 	    patch->originy = SHORT(mpatch->originy);
-	    patch->patch = patchlookup[SHORT(mpatch->patch)];
+	    int patch_idx = SHORT(mpatch->patch);
+	    if (patch_idx < 0 || patch_idx >= nummappatches)
+	    {
+		I_Error ("R_InitTextures: bad patch index %d (nummappatches=%d) in texture %.8s",
+		         patch_idx, nummappatches, texture->name);
+	    }
+	    patch->patch = patchlookup[patch_idx];
 	    if (patch->patch == -1)
 	    {
-		I_Error ("R_InitTextures: Missing patch in texture %s",
+		I_Error ("R_InitTextures: Missing patch in texture %.8s",
 			 texture->name);
 	    }
 	}		

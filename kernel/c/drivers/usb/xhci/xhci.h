@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../usb.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -194,6 +196,8 @@ typedef struct {
 
 } xhci_controller_t;
 
+extern xhci_controller_t xhc;
+
 // Defines
 #define XHCI_CMD_RUN (1 << 0)
 #define XHCI_CMD_RESET (1 << 1)
@@ -207,15 +211,6 @@ typedef struct {
 #define XHCI_TRB_TYPE_SETUP_STAGE 2
 #define XHCI_TRB_TYPE_DATA_STAGE 3
 #define XHCI_TRB_TYPE_STATUS_STAGE 4
-
-// USB Setup Packet (Standard)
-typedef struct {
-  uint8_t request_type;
-  uint8_t request;
-  uint16_t value;
-  uint16_t index;
-  uint16_t length;
-} __attribute__((packed)) usb_setup_packet_t;
 
 int xhci_init(uintptr_t base_addr, uint8_t bus, uint8_t dev, uint8_t func);
 int xhci_address_device(uint8_t slot_id, uint8_t root_hub_port_num,

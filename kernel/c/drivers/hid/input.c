@@ -19,6 +19,36 @@ static bool g_key_down = false;
 
 extern uint64_t timer_get_ms();
 
+static char input_apply_shift(char c) {
+    if (c >= 'a' && c <= 'z') return (char)(c - 'a' + 'A');
+    if (c >= 'A' && c <= 'Z') return c;
+
+    switch (c) {
+        case '1': return '!';
+        case '2': return '@';
+        case '3': return '#';
+        case '4': return '$';
+        case '5': return '%';
+        case '6': return '^';
+        case '7': return '&';
+        case '8': return '*';
+        case '9': return '(';
+        case '0': return ')';
+        case '-': return '_';
+        case '=': return '+';
+        case '[': return '{';
+        case ']': return '}';
+        case '\\': return '|';
+        case ';': return ':';
+        case '\'': return '"';
+        case ',': return '<';
+        case '.': return '>';
+        case '/': return '?';
+        case '`': return '~';
+        default: return c;
+    }
+}
+
 int input_keyboard_available() {
     // Check for repeats before reporting availability
     if (g_key_down && g_last_key == 8) { // Only repeat backspace for now
@@ -43,7 +73,9 @@ uint32_t input_keyboard_get_event() {
 
 char input_keyboard_getc() {
     uint32_t e = input_keyboard_get_event();
-    if (e & 0xFF000000) return 0; // It's a special key or modifier only
+    // Return the character byte even if modifiers are present.
+    // Some callers use getc() rather than get_event(), but still expect
+    // shifted characters to come through.
     return (char)(e & 0xFF);
 }
 
@@ -61,6 +93,17 @@ void input_keyboard_push(uint32_t event) {
         g_key_press_time = timer_get_ms();
         g_last_repeat_time = g_key_press_time;
         g_key_down = true;
+    }
+
+    // Apply Shift translation for printable key-press events.
+    if (!(event & (1u << 31))) {
+        if (event & KB_MOD_SHIFT) {
+            uint32_t low = event & 0xFF;
+            if (low >= 32 && low <= 126) {
+                char shifted = input_apply_shift((char)low);
+                event = (event & 0xFFFFFF00u) | (uint8_t)shifted;
+            }
+        }
     }
 
     int next_write = (kb_write_ptr + 1) % KB_BUFFER_SIZE;

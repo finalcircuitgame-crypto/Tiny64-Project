@@ -114,7 +114,6 @@ void scheduler_tick() {
             }
         }
     }
-    yield();
 }
 
 void task_sleep(uint32_t ticks) {

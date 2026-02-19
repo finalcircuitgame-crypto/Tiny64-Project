@@ -65,4 +65,14 @@ void ramfs_write_file(RamNode* file, const char* data) {
     }
 }
 
+void ramfs_write_file_bin(RamNode* file, const void* data, uint32_t size) {
+    file->size = size;
+
+    extern void* kmalloc(size_t);
+    file->content = (uint8_t*)kmalloc(size);
+    if (file->content && data && size) {
+        memcpy(file->content, data, size);
+    }
+}
+
 RamNode* ramfs_get_root() { return root_dir; }

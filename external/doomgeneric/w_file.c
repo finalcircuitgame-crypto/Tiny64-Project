@@ -90,6 +90,21 @@ void W_CloseFile(wad_file_t *wad)
 size_t W_Read(wad_file_t *wad, unsigned int offset,
               void *buffer, size_t buffer_len)
 {
+    if (wad == NULL)
+    {
+        return 0;
+    }
+
+    // Tiny64 uses the stdc backend; if this pointer gets corrupted we can end
+    // up jumping through a garbage function pointer. Force back to stdc.
+    if (wad->file_class != &stdc_wad_file)
+    {
+        printf("W_Read: WARNING: wad->file_class=%p (expected %p); forcing stdc\n",
+               wad->file_class, &stdc_wad_file);
+        wad->file_class = &stdc_wad_file;
+        wad->mapped = NULL;
+    }
+
     return wad->file_class->Read(wad, offset, buffer, buffer_len);
 }
 

@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // E1000 Registers
 #define E1000_REG_CTRL      0x0000
 #define E1000_REG_STATUS    0x0008
@@ -51,8 +55,10 @@
 typedef struct {
     uint64_t addr;
     uint16_t length;
-    uint8_t  errors;
+    uint16_t csum;
     uint8_t  status;
+    uint8_t  errors;
+    uint16_t special;
 } __attribute__((packed)) e1000_rx_desc_t;
 
 typedef struct {
@@ -73,5 +79,20 @@ void e1000_net_log_callback(char c);
 void e1000_send_udp_packet(uint8_t* dst_ip, uint16_t dst_port, const void* data, uint16_t len);
 void e1000_send_tcp_packet(uint8_t* dst_ip, uint16_t dst_port, const void* data, uint16_t len, uint8_t flags);
 uint32_t e1000_get_status_reg();
+
+typedef void (*e1000_rx_callback_t)(const void* frame, uint16_t len);
+void e1000_set_rx_callback(e1000_rx_callback_t cb);
+void e1000_poll_rx(void);
+void e1000_arp_probe_gateway(void);
+
+// Net stack helpers
+uint32_t e1000_tcp_get_ticks(void);
+void e1000_send_tcp_packet_ex(const uint8_t dst_ip[4], uint16_t src_port, uint16_t dst_port,
+                              uint32_t seq, uint32_t ack, uint8_t flags,
+                              const void* data, uint16_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

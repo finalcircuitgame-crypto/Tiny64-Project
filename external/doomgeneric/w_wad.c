@@ -36,6 +36,8 @@
 
 #include "w_wad.h"
 
+extern wad_file_class_t stdc_wad_file;
+
 typedef struct
 {
     // Should be "IWAD" or "PWAD".
@@ -158,6 +160,8 @@ wad_file_t *W_AddFile (char *filename)
 		return NULL;
     }
 
+    printf("W_AddFile: %s len=%u\n", filename, wad_file->length);
+
     newnumlumps = numlumps;
 
     if (strcasecmp(filename+strlen(filename)-3 , "wad" ) )
@@ -198,7 +202,32 @@ wad_file_t *W_AddFile (char *filename)
 
 		header.numlumps = LONG(header.numlumps);
 		header.infotableofs = LONG(header.infotableofs);
+
+        printf("W_AddFile: ident=%.4s numlumps=%d dir_ofs=%d\n",
+               header.identification, header.numlumps, header.infotableofs);
+
+
+        if (header.numlumps <= 0 || header.numlumps > 65535)
+        {
+            I_Error("W_AddFile: suspicious numlumps=%d for %s", header.numlumps, filename);
+        }
+
+
+        if (header.infotableofs < 0 || (unsigned int)header.infotableofs >= wad_file->length)
+        {
+            I_Error("W_AddFile: bad infotableofs=%d len=%u for %s",
+                    header.infotableofs, wad_file->length, filename);
+        }
+
 		length = header.numlumps*sizeof(filelump_t);
+
+
+        if ((unsigned int)header.infotableofs + (unsigned int)length > wad_file->length)
+        {
+            I_Error("W_AddFile: directory overruns file: dir_ofs=%d dir_len=%d len=%u for %s",
+                    header.infotableofs, length, wad_file->length, filename);
+        }
+
 		fileinfo = Z_Malloc(length, PU_STATIC, 0);
 
         W_Read(wad_file, header.infotableofs, fileinfo, length);
@@ -391,12 +420,19 @@ void *W_CacheLumpNum(int lumpnum, int tag)
 
     lump = &lumpinfo[lumpnum];
 
+    if (!strncasecmp(lump->name, "PNAMES", 6))
+    {
+        printf("W_CacheLumpNum: PNAMES state mapped=%p cache=%p size=%d pos=%d\n",
+               lump->wad_file ? lump->wad_file->mapped : NULL,
+               lump->cache, lump->size, lump->position);
+    }
+
     // Get the pointer to return.  If the lump is in a memory-mapped
     // file, we can just return a pointer to within the memory-mapped
     // region.  If the lump is in an ordinary file, we may already
     // have it cached; otherwise, load it into memory.
 
-    if (lump->wad_file->mapped != NULL)
+    if (0 && lump->wad_file->mapped != NULL)
     {
         // Memory mapped file, return from the mmapped region.
 
@@ -414,7 +450,23 @@ void *W_CacheLumpNum(int lumpnum, int tag)
         // Not yet loaded, so load it now
 
         lump->cache = Z_Malloc(W_LumpLength(lumpnum), tag, &lump->cache);
+
+        if (!strncasecmp(lump->name, "PNAMES", 6) && lump->cache != NULL)
+        {
+            unsigned char *b = (unsigned char *) lump->cache;
+            printf("W_CacheLumpNum: PNAMES cache=%p pre=%02x %02x %02x %02x %02x %02x %02x %02x\n",
+                   lump->cache, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
+        }
+
 	W_ReadLump (lumpnum, lump->cache);
+
+        if (!strncasecmp(lump->name, "PNAMES", 6) && lump->cache != NULL)
+        {
+            unsigned char *b = (unsigned char *) lump->cache;
+            printf("W_CacheLumpNum: PNAMES cache=%p post=%02x %02x %02x %02x %02x %02x %02x %02x\n",
+                   lump->cache, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
+        }
+
         result = lump->cache;
     }
 	
@@ -428,7 +480,26 @@ void *W_CacheLumpNum(int lumpnum, int tag)
 //
 void *W_CacheLumpName(char *name, int tag)
 {
-    return W_CacheLumpNum(W_GetNumForName(name), tag);
+    int lumpnum = W_GetNumForName(name);
+    if (!strncasecmp(name, "PNAMES", 6))
+    {
+        lumpinfo_t *l = &lumpinfo[lumpnum];
+        printf("W_CacheLumpName: %.8s -> lump=%d pos=%d size=%d\n",
+               l->name, lumpnum, l->position, l->size);
+    }
+
+    void *p = W_CacheLumpNum(lumpnum, tag);
+
+    if (!strncasecmp(name, "PNAMES", 6) && p != NULL)
+    {
+        unsigned char *b = (unsigned char *) p;
+        unsigned int v = (unsigned int)b[0] | ((unsigned int)b[1] << 8) |
+                         ((unsigned int)b[2] << 16) | ((unsigned int)b[3] << 24);
+        printf("W_CacheLumpName: PNAMES head=%02x %02x %02x %02x (u32=%x)\n",
+               b[0], b[1], b[2], b[3], v);
+    }
+
+    return p;
 }
 
 // 

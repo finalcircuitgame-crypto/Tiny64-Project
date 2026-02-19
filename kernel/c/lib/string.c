@@ -44,6 +44,15 @@ void* __memset_chk(void* dest, int c, size_t n, size_t destlen) {
     return memset(dest, c, n);
 }
 
+int memcmp(const void* s1, const void* s2, size_t n) {
+    const uint8_t* a = (const uint8_t*)s1;
+    const uint8_t* b = (const uint8_t*)s2;
+    for (size_t i = 0; i < n; i++) {
+        if (a[i] != b[i]) return (int)a[i] - (int)b[i];
+    }
+    return 0;
+}
+
 size_t strlen(const char* str) {
     size_t len = 0;
     while (str[len]) {

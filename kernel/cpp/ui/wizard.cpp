@@ -6,6 +6,7 @@
 #include "../../c/drivers/usb/usb.h"
 #include "../../c/fs/fat32.h"
 #include "../../c/drivers/network/network.h"
+#include "../../c/drivers/network/e1000.h"
 #include "../utils/persistence.h"
 #include "../../c/drivers/platform/serial.h" // For debug logs
 
@@ -13,11 +14,18 @@ static void sleep_ms(int ms) {
     // Poll USB while sleeping to prevent ring overflow and input lag
     for (int i = 0; i < ms; i++) {
         usb_poll();
+        e1000_poll_rx();
         for (volatile int j = 0; j < 10000; j++);
     }
 }
 
 extern "C" void run_wizard(Framebuffer* fb) {
+    const char* existing_user = Persistence::LoadUsername();
+    if (existing_user && strcmp(existing_user, "Guest") != 0) {
+        serial_write_str("Wizard: Settings already present, skipping.\r\n");
+        return;
+    }
+
     size_t wizard_ckpt = kmalloc_checkpoint();
     serial_write_str("Wizard: Starting...\r\n");
 
@@ -81,6 +89,7 @@ extern "C" void run_wizard(Framebuffer* fb) {
         
         r.show();
         usb_poll();
+        e1000_poll_rx();
         sleep_ms(1);
     }
     
@@ -117,6 +126,7 @@ extern "C" void run_wizard(Framebuffer* fb) {
 
     while (!done) {
         usb_poll();
+        e1000_poll_rx();
         t_global++;
 
         input_mouse_state_t mstate;
@@ -362,9 +372,17 @@ extern "C" void run_wizard(Framebuffer* fb) {
 
         if (input_keyboard_available()) {
             char c = input_keyboard_getc();
+            if (c == 27) {
+                done = true;
+            }
             if (current_page == 0) {
                 if (c == 8 && cursor > 0) { cursor--; username[cursor] = 0; } 
                 else if (c >= 32 && c <= 126 && cursor < 30) { username[cursor++] = c; username[cursor] = 0; }
+            }
+            if (current_page == 1) {
+                if (c == '1') selected_theme = 0;
+                else if (c == '2') selected_theme = 1;
+                else if (c == '3') selected_theme = 2;
             }
             if (c == '\n' && (current_page < 3 || current_page == 5)) {
                 current_page++;
@@ -382,8 +400,11 @@ extern "C" void run_wizard(Framebuffer* fb) {
     r.draw_string("Finalizing Setup...", cx - 85, cy - 10, COLOR_BLACK, 1);
     r.show();
     sleep_ms(800);
-    
-    Persistence::SaveSettings(username); 
+
+    if (!username[0]) {
+        strcpy(username, "Guest");
+    }
+    Persistence::SaveSettings(username);
     Persistence::SaveTheme(selected_theme);
     
     // Smooth transition to "Booting"

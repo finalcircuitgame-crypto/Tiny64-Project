@@ -22,11 +22,13 @@ _start:
     # MS Arg5: [RSP+40] -> SysV Arg5: R8 (boot_flags)
     
     mov 40(%rsp), %rax  # Capture 5th arg (boot_flags) before stack change
+    mov 48(%rsp), %rbx  # Capture 6th arg (boot_files pointer)
     mov %rcx, %rdi
     mov %rdx, %rsi
     mov %r8, %rdx
     mov %r9, %rcx
     mov %rax, %r8
+    mov %rbx, %r9
     
     # Set up stack pointer
     mov $stack_top, %rsp

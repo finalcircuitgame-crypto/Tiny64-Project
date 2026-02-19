@@ -52,10 +52,18 @@ void dma_sync_for_device(void* v, size_t size) {
 }
 
 void dma_sync_for_cpu(void* v, size_t size) {
-    // On x86, mfence is generally sufficient for ensuring ordering
-    // In more complex scenarios with non-coherent DMA, more aggressive 
-    // invalidation might be needed.
-    (void)v;
-    (void)size;
+    if (!v || size == 0) return;
+
+    uintptr_t start = (uintptr_t)v;
+    uintptr_t end = start + size;
+
+    // Align start to 64-byte cache line
+    start &= ~63UL;
+
+    // clflush invalidates the line so subsequent reads observe device writes
+    for (uintptr_t p = start; p < end; p += 64) {
+        __asm__ volatile("clflush (%0)" : : "r"(p) : "memory");
+    }
+
     __asm__ volatile("mfence" : : : "memory");
 }

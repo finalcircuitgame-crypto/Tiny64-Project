@@ -25,7 +25,16 @@ DISABLE_PS2 ?= 0
 BOOT_CFLAGS := -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -g -Iboot/include -fno-stack-check -fno-asynchronous-unwind-tables
 
 # Kernel sources
-KERNEL_SRC_C := $(shell find $(KERNEL_DIR)/c -name '*.c')
+KERNEL_SRC_C_ALL := $(shell find $(KERNEL_DIR)/c -name '*.c')
+
+# Only link ONE xHCI implementation.
+# - USE_QEMU_XHCI=1: use kernel/c/drivers/usb/xhci/qemu/xhci.c
+# - USE_QEMU_XHCI=0: use kernel/c/drivers/usb/xhci/xhci.c
+ifeq ($(USE_QEMU_XHCI),1)
+KERNEL_SRC_C := $(filter-out $(KERNEL_DIR)/c/drivers/usb/xhci/xhci.c,$(KERNEL_SRC_C_ALL))
+else
+KERNEL_SRC_C := $(filter-out $(KERNEL_DIR)/c/drivers/usb/xhci/qemu/xhci.c,$(KERNEL_SRC_C_ALL))
+endif
 XHCI_INCLUDE := -I$(KERNEL_DIR)/c/drivers/usb/xhci -I$(KERNEL_DIR)/c/drivers/usb/xhci/qemu
 
 # Doom Generic Sources
@@ -61,7 +70,7 @@ KERNEL_OBJS := \
 KERNEL_BIN := $(BUILD_DIR)/kernel/kernel.elf
 KERNEL_LDS := $(KERNEL_DIR)/config/linker/kernel.ld
 
-CFLAGS := -O3 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mno-red-zone -D_FORTIFY_SOURCE=0 -fno-tree-slp-vectorize -fno-tree-vectorize -g -MMD -I$(KERNEL_DIR) $(XHCI_INCLUDE) -I$(DOOM_DIR) -DUSE_USB=$(USE_USB) -DDISABLE_PS2=$(DISABLE_PS2)
+CFLAGS := -O3 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mno-red-zone -D_FORTIFY_SOURCE=0 -fno-tree-slp-vectorize -fno-tree-vectorize -g -MMD -I$(KERNEL_DIR) $(XHCI_INCLUDE) -I$(DOOM_DIR) -DUSE_USB=$(USE_USB) -DUSE_QEMU_XHCI=$(USE_QEMU_XHCI) -DDISABLE_PS2=$(DISABLE_PS2)
 CPPFLAGS := $(CFLAGS) -fno-exceptions -fno-rtti -std=c++17
 
 ASFLAGS := --64

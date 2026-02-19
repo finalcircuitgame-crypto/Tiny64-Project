@@ -9,6 +9,7 @@ extern "C" {
 
 void* kmalloc(size_t size);
 void kfree(void* ptr);
+size_t ksize(void* ptr);
 size_t kmalloc_checkpoint(void);
 void kmalloc_rewind(size_t ckpt);
 

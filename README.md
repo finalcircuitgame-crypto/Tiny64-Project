@@ -15,6 +15,12 @@ Tiny64 is a research operating system designed to demonstrate the power of moder
 - **Window Management**: Overlapping windows with focus management, minimizing, and dragging.
 - **Terminal**: A built-in terminal window for system interaction.
 - **File Explorer**: Browse the filesystem with a modern icon-based interface (powered by `FileExplorer.png`).
+- **Notepad**: Lightweight text editor.
+- **Task Manager**: View running UI tasks/windows.
+- **Device Manager**: Inspect detected hardware.
+- **Settings**: Theme + appearance settings.
+- **Browser**: Minimal graphical web browser window with an omnibox and basic HTML-to-text rendering.
+- **DOOM Platinum**: Integrated DOOM window (DoomGeneric-based).
 - **Rendering Engine**: Advanced software renderer supporting:
     - Rounded rectangles and transparency.
     - Multiple font systems (Bitmap 8x16, Vector fonts, and High-quality TTF rendering using **Inter-Regular.ttf** via `stb_truetype`).
@@ -34,9 +40,16 @@ Tiny64 features a clean, professional aesthetic:
     - **NVMe**: High-speed flash storage support.
     - **AHCI**: SATA controller support for HDDs/SSDs.
     - **Legacy ATA**: Fallback support for older IDE systems.
-- **Networking**: Intel e1000 Gigabit Ethernet driver.
+- **Networking**: Intel e1000 Gigabit Ethernet driver (QEMU supported).
 - **HID**: Support for both modern USB HID and legacy PS/2 input.
 - **PCI**: Dynamic bus scanning and configuration.
+
+### 🌐 Networking + Browser Notes
+- The QEMU setup uses the **Intel e1000** device.
+- There is a minimal in-kernel TCP client used by the Browser.
+- For HTTPS, the current approach is to use the **QEMU user-net gateway IP** (`10.0.2.2`) as a host-side HTTP/TLS offload endpoint.
+  - `http://...` is sent to `10.0.2.2:80`
+  - `https://...` is sent to `10.0.2.2:443`
 
 ### 🧠 Kernel Core
 - **Architecture**: Pure 64-bit (x86_64) long mode.
@@ -85,9 +98,15 @@ The `run.sh` script handles disk image creation and QEMU execution:
 # Boot with Networking (e1000) enabled
 ./run.sh --net
 
+# Trial mode (skips first-boot wizard)
+./run.sh --trial
+
 # Boot directly into Recovery Mode
 ./run.sh --recovery
 ```
+
+### DOOM Data
+Tiny64 expects an IWAD (eg. `doom1.wad`) to be available at boot. The bootloader loads the WAD into memory and injects it into RamFS so the DOOM window can start without disk I/O latency.
 
 ## 📂 Project Structure
 

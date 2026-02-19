@@ -23,98 +23,105 @@ void SettingsWindow::Draw(Renderer &r) {
   if (minimized || closed)
     return;
 
-  int sidebar_w = 120;
-  int content_x = x + sidebar_w + 5;
-  int content_y = y + 35;
-  int content_w = w - sidebar_w - 15;
-  int content_h = h - 45;
+  int sidebar_w = 150;
+  int content_x = x + sidebar_w + 15;
+  int content_y = y + 40;
+  int content_w = w - sidebar_w - 25;
+  int content_h = h - 55;
 
   // Draw a neutral gray background and a slightly lighter gray sidebar.
   // Colors use 0xAARRGGBB (alpha, red, green, blue).
   // Adjust the hex values if you want lighter/darker grays.
 
-  // Sidebar background (inset, slightly lighter)
-  r.fill_rect(x + 5, y + 35, sidebar_w, h - 45, 0xFF3A3A3A);
+  // Sidebar background (inset)
+  r.fill_rect(x + 5, y + 35, sidebar_w, h - 45, 0xFF242424);
 
   const char *tabs[] = {"About",  "Display", "Personalize",
                         "System", "Network", "Security"};
   for (int i = 0; i < 6; i++) {
-    // Active tab highlight: a lighter gray with some transparency
-    if (active_tab == i)
-      r.fill_rect(x + 5, y + 40 + i * 40, sidebar_w, 35, 0x88484848);
-
-    // Tab text: keep it readable on gray (white)
-    r.draw_string(tabs[i], x + 15, y + 50 + i * 40, 0xFFFFFFFF, 1);
+    int ty = y + 45 + i * 44;
+    if (active_tab == i) {
+      r.fill_rect(x + 5, ty, sidebar_w, 38, 0xFF303030);
+      r.fill_rect(x + 5, ty, 3, 38, 0xFF3498DB);
+      r.draw_string(tabs[i], x + 18, ty + 12, 0xFFFFFFFF, 1);
+    } else {
+      r.draw_string(tabs[i], x + 18, ty + 12, 0xFFCCCCCC, 1);
+    }
   }
 
-  // Optional: subtle divider between sidebar and content
-  r.fill_rect(x + 5 + sidebar_w, y + 35, 1, h - 45, 0xFF262626);
+  // Divider between sidebar and content
+  r.fill_rect(x + 5 + sidebar_w, y + 35, 1, h - 45, 0xFF101010);
 
   // Content Area
-  r.draw_rounded_rect(content_x, content_y, content_w, content_h, 5,
-                      0x11FFFFFF);
+  r.fill_rect(content_x, content_y, content_w, content_h, 0xFF141414);
+  r.draw_rounded_rect(content_x, content_y, content_w, content_h, 6,
+                      0xFF2A2A2A);
 
   if (active_tab == 0) { // About
-    r.draw_string("TIdfdfdfdfdfdNY64 OS", content_x + 20, content_y + 20,
-                  0xFF3498DB, 2);
-    r.draw_string("Version 1.3.5 Platinum", content_x + 20, content_y + 50,
-                  0xFFAAAAAA, 1);
-    r.draw_string("Kernel: 64-bit Microkernel", content_x + 20, content_y + 80,
-                  0xFFFFFFFF, 1);
+    r.draw_string("Tiny64 OS", content_x + 20, content_y + 16, 0xFFFFFFFF, 2,
+                  FONT_BOLD);
+    r.draw_string("Version 1.3.5 Platinum", content_x + 20, content_y + 52,
+                  0xFFBBBBBB, 1);
+    r.draw_string("Kernel: 64-bit Microkernel", content_x + 20, content_y + 84,
+                  0xFFEDEDED, 1);
     r.draw_string("Developer: Gemini CLI Agent", content_x + 20,
-                  content_y + 110, 0xFFFFFFFF, 1);
+                  content_y + 114, 0xFFEDEDED, 1);
     r.draw_string("Special Thanks: stb, Limine, OVMF", content_x + 20,
-                  content_y + 140, 0xFFAAAAAA, 1);
+                  content_y + 144, 0xFFBBBBBB, 1);
   } else if (active_tab == 1) { // Display
-    r.draw_string("Display Settings", content_x + 20, content_y + 20,
-                  0xFFFFFFFF, 1);
+    r.draw_string("Display Settings", content_x + 20, content_y + 16,
+                  0xFFFFFFFF, 2, FONT_BOLD);
 
-    r.draw_string("Hardware Acceleration", content_x + 20, content_y + 50,
-                  0xFFFFFFFF, 1);
+    r.draw_string("Hardware Acceleration", content_x + 20, content_y + 58,
+                  0xFFEDEDED, 1);
     r.draw_rounded_rect(content_x + 220, content_y + 45, 50, 25, 12,
                         hardware_accel ? 0xFF2ECC71 : 0xFF7F8C8D);
     r.fill_rect(content_x + (hardware_accel ? 245 : 225), content_y + 48, 20,
                 19, 0xFFFFFFFF);
 
-    r.draw_string("Show FPS Counter", content_x + 20, content_y + 90,
-                  0xFFFFFFFF, 1);
+    r.draw_string("Show FPS Counter", content_x + 20, content_y + 98,
+                  0xFFEDEDED, 1);
     r.draw_rounded_rect(content_x + 220, content_y + 85, 50, 25, 12,
                         show_fps ? 0xFF2ECC71 : 0xFF7F8C8D);
     r.fill_rect(content_x + (show_fps ? 245 : 225), content_y + 88, 20, 19,
                 0xFFFFFFFF);
 
     r.draw_string("Resolution: 1024x768 (Auto)", content_x + 20,
-                  content_y + 140, 0xFFAAAAAA, 1);
+                  content_y + 150, 0xFFBBBBBB, 1);
   } else if (active_tab == 2) { // Personalize
-    r.draw_string("Personalization", content_x + 20, content_y + 20, 0xFFFFFFFF,
-                  1);
+    r.draw_string("Personalization", content_x + 20, content_y + 16,
+                  0xFFFFFFFF, 2, FONT_BOLD);
 
-    r.draw_string("User Name", content_x + 20, content_y + 45, 0xFFAAAAAA, 1);
-    r.draw_rounded_rect(content_x + 20, content_y + 60, 150, 25, 4, 0x22FFFFFF);
-    r.draw_string(username, content_x + 28, content_y + 65, 0xFFFFFFFF, 1);
+    r.draw_string("User Name", content_x + 20, content_y + 64, 0xFFBBBBBB, 1);
+    r.fill_rect(content_x + 20, content_y + 86, 180, 28, 0xFF0F0F0F);
+    r.draw_rounded_rect(content_x + 20, content_y + 86, 180, 28, 4,
+                        0xFF2A2A2A);
+    r.draw_string(username, content_x + 28, content_y + 94, 0xFFFFFFFF, 1);
 
-    r.draw_string("Wallpaper", content_x + 20, content_y + 100, 0xFFAAAAAA, 1);
+    r.draw_string("Wallpaper", content_x + 20, content_y + 135, 0xFFBBBBBB, 1);
     const char *wps[] = {"Tiny Blue", "Deep Space", "Modern Dark"};
     for (int i = 0; i < 3; i++) {
       bool sel = (selected_wallpaper == i);
-      r.draw_rounded_rect(content_x + 20, content_y + 120 + i * 35, 150, 30, 5,
-                          sel ? 0x883498DB : 0x44FFFFFF);
-      r.draw_string(wps[i], content_x + 30, content_y + 128 + i * 35,
-                    0xFFFFFFFF, 1);
+      int wy = content_y + 158 + i * 38;
+      r.draw_rounded_rect(content_x + 20, wy, 180, 32, 6,
+                          sel ? 0xFF3498DB : 0xFF2A2A2A);
+      r.draw_string(wps[i], content_x + 32, wy + 10,
+                    sel ? 0xFFFFFFFF : 0xFFE0E0E0, 1);
     }
 
-    r.draw_string("Theme", content_x + 200, content_y + 100, 0xFFAAAAAA, 1);
+    r.draw_string("Theme", content_x + 230, content_y + 135, 0xFFBBBBBB, 1);
     const char *themes[] = {"Dark", "Light", "Platinum"};
     for (int i = 0; i < 3; i++) {
       bool sel = (selected_theme == i);
-      r.draw_rounded_rect(content_x + 200, content_y + 120 + i * 35, 150, 30, 5,
-                          sel ? 0x883498DB : 0x44FFFFFF);
-      r.draw_string(themes[i], content_x + 210, content_y + 128 + i * 35,
-                    0xFFFFFFFF, 1);
+      int ty = content_y + 158 + i * 38;
+      r.draw_rounded_rect(content_x + 230, ty, 180, 32, 6,
+                          sel ? 0xFF3498DB : 0xFF2A2A2A);
+      r.draw_string(themes[i], content_x + 242, ty + 10,
+                    sel ? 0xFFFFFFFF : 0xFFE0E0E0, 1);
     }
   } else if (active_tab == 3) { // System
-    r.draw_string("System Information", content_x + 20, content_y + 20,
-                  0xFFFFFFFF, 1);
+    r.draw_string("System Information", content_x + 20, content_y + 16,
+                  0xFFFFFFFF, 2, FONT_BOLD);
 
     Hardware::CPUInfo info = Hardware::GetCPUInfo();
     r.draw_string("CPU:", content_x + 20, content_y + 50, 0xFF3498DB, 1);
@@ -128,7 +135,7 @@ void SettingsWindow::Draw(Renderer &r) {
     r.draw_string(mbuf, content_x + 20, content_y + 80, 0xFFFFFFFF, 1);
 
     r.draw_string("GPU: Tiny64 Generic VBE", content_x + 20, content_y + 110,
-                  0xFFFFFFFF, 1);
+                  0xFFEDEDED, 1);
 
     r.draw_rounded_rect(content_x + 20, content_y + 160, 180, 35, 6,
                         0xFF3498DB);
@@ -182,19 +189,20 @@ void SettingsWindow::OnMouseEvent(int mx, int my, int type) {
   if (type != MOUSE_EVENT_UP)
     return;
 
-  int sidebar_w = 120;
+  int sidebar_w = 150;
   // Tab switching
   if (mx >= x + 5 && mx <= x + sidebar_w + 5) {
     for (int i = 0; i < 6; i++) {
-      if (my >= y + 40 + i * 40 && my <= y + 75 + i * 40) {
+      int ty = y + 45 + i * 44;
+      if (my >= ty && my <= ty + 38) {
         active_tab = i;
         return;
       }
     }
   }
 
-  int content_x = x + sidebar_w + 5;
-  int content_y = y + 35;
+  int content_x = x + sidebar_w + 15;
+  int content_y = y + 40;
 
   if (active_tab == 1) { // Display
     if (mx >= content_x + 220 && mx <= content_x + 270) {
@@ -205,18 +213,20 @@ void SettingsWindow::OnMouseEvent(int mx, int my, int type) {
     }
   } else if (active_tab == 2) { // Personalize
     // Wallpaper
-    if (mx >= content_x + 20 && mx <= content_x + 170) {
+    if (mx >= content_x + 20 && mx <= content_x + 200) {
       for (int i = 0; i < 3; i++) {
-        if (my >= content_y + 120 + i * 35 && my <= content_y + 150 + i * 35) {
+        int wy = content_y + 158 + i * 38;
+        if (my >= wy && my <= wy + 32) {
           selected_wallpaper = i;
           Persistence::SaveWallpaper(i);
         }
       }
     }
     // Theme
-    if (mx >= content_x + 200 && mx <= content_x + 350) {
+    if (mx >= content_x + 230 && mx <= content_x + 410) {
       for (int i = 0; i < 3; i++) {
-        if (my >= content_y + 120 + i * 35 && my <= content_y + 150 + i * 35) {
+        int ty = content_y + 158 + i * 38;
+        if (my >= ty && my <= ty + 32) {
           selected_theme = i;
           Persistence::SaveTheme(i);
         }

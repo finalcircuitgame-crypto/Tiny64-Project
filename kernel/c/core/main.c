@@ -82,8 +82,13 @@ int is_qemu() {
   return 0;
 }
 
+typedef struct {
+  void *doom1_wad;
+  uint64_t doom1_wad_size;
+} BootFiles;
+
 void kmain(Framebuffer *fb, void *map, uint64_t map_size, uint64_t desc_size,
-           uint64_t boot_flags) {
+           uint64_t boot_flags, BootFiles *boot_files) {
   g_kernel_fb = fb;
   init_serial();
 
@@ -130,6 +135,31 @@ void kmain(Framebuffer *fb, void *map, uint64_t map_size, uint64_t desc_size,
   serial_write_str("FS: Initializing RamFS...\r\n");
   ramfs_init();
 
+  if (boot_files && boot_files->doom1_wad && boot_files->doom1_wad_size) {
+    RamNode *wad = ramfs_create("doom1.wad", FS_FILE);
+    if (wad) {
+      ramfs_write_file_bin(wad, boot_files->doom1_wad,
+                           (uint32_t)boot_files->doom1_wad_size);
+      serial_write_str("FS: Injected doom1.wad into RamFS.\r\n");
+
+      uint32_t off = 2588260;
+      if (boot_files->doom1_wad_size > (uint64_t)off + 4 && wad->size > off + 4) {
+        uint8_t *src = (uint8_t *)boot_files->doom1_wad;
+        uint32_t sv = (uint32_t)src[off] | ((uint32_t)src[off + 1] << 8) |
+                      ((uint32_t)src[off + 2] << 16) | ((uint32_t)src[off + 3] << 24);
+        uint8_t *dst = (uint8_t *)wad->content;
+        uint32_t dv = (uint32_t)dst[off] | ((uint32_t)dst[off + 1] << 8) |
+                      ((uint32_t)dst[off + 2] << 16) | ((uint32_t)dst[off + 3] << 24);
+
+        serial_write_str("WAD: src@PNAMES=0x");
+        serial_write_hex((uint64_t)sv);
+        serial_write_str(" dst@PNAMES=0x");
+        serial_write_hex((uint64_t)dv);
+        serial_write_str("\r\n");
+      }
+    }
+  }
+
   serial_write_str("Hardware: Initializing Legacy ATA...\r\n");
   ata_init(); // Legacy fallback
 
@@ -171,18 +201,34 @@ void kmain(Framebuffer *fb, void *map, uint64_t map_size, uint64_t desc_size,
   }
 
   // Initialize Interrupts & Scheduler
-  extern void init_idt();
-  init_idt();
-  serial_write_str("Scheduler: Initializing...\r\n");
-  scheduler_init();
+  {
+    extern void init_idt();
+    init_idt();
+  }
+
+  if (!is_qemu()) {
+    serial_write_str("Scheduler: Initializing...\r\n");
+    scheduler_init();
+
+    serial_write_str("[CPU] Enabling Interrupts (STI)...\r\n");
+    __asm__ volatile("sti");
+    serial_write_str("[CPU] Interrupts Enabled.\r\n");
+  } else {
+    serial_write_str("Scheduler: Skipped in QEMU mode.\r\n");
+  }
 
   serial_write_str("Kernel initialization complete.\r\n\r\n");
 
   if (is_qemu()) { // QEMU / KVM
     draw_splash(fb);
     serial_terminal_stop();
-    run_wizard(fb);   // interactive setup
-    desktop_loop(fb); // continue to desktop
+
+    if (boot_flags & 2) {
+      desktop_loop(fb);
+    } else {
+      run_wizard(fb);
+      desktop_loop(fb);
+    }
   } else {            // real hardware
     shell_loop();     // stay in serial terminal until exit
     serial_terminal_stop();

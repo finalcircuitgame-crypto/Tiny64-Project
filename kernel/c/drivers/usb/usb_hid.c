@@ -30,7 +30,7 @@ void usb_hid_init_device(usb_device_t* dev) {
     
     // Check if it's a keyboard (simplified: we'd normally check interface class)
     // For now, let's assume if it has a kbd_ring, it's a keyboard
-    if (xhc.slots[dev->slot_id].kbd_ring) {
+    if (xhc.slots[dev->slot_id].ring1_ptr) {
         serial_write_str("USB HID: Initializing keyboard on slot ");
         serial_write_dec(dev->slot_id);
         serial_write_str("\r\n");
@@ -39,25 +39,25 @@ void usb_hid_init_device(usb_device_t* dev) {
         
         // Enqueue first transfer
         xhci_slot_data_t *slot = &xhc.slots[dev->slot_id];
-        uint32_t idx = slot->kbd_enqueue;
-        xhci_trb_t *trb = &slot->kbd_ring[idx];
+        uint32_t idx = slot->ring1_enqueue;
+        xhci_trb_t *trb = &((xhci_trb_t *)(uintptr_t)slot->ring1_ptr)[idx];
         
         // Use a static buffer for reports (one per slot)
         static uint8_t report_bufs[16][8];
         
         trb->parameter = (uintptr_t)report_bufs[dev->slot_id];
         trb->status = 8;
-        trb->control = (1 << 10) | (1 << 5) | (slot->kbd_cycle ? 1 : 0);
+        trb->control = (1 << 10) | (1 << 5) | (slot->ring1_cycle ? 1 : 0);
         
-        slot->kbd_enqueue = (idx + 1) % 64;
-        if (slot->kbd_enqueue == 63) {
+        slot->ring1_enqueue = (idx + 1) % 64;
+        if (slot->ring1_enqueue == 63) {
             // Link TRB handled by xhci.c init, but we should be careful
-            slot->kbd_enqueue = 0;
-            slot->kbd_cycle = !slot->kbd_cycle;
+            slot->ring1_enqueue = 0;
+            slot->ring1_cycle = !slot->ring1_cycle;
         }
         
         // Ring doorbell
-        xhc.db_regs[dev->slot_id].target = slot->kbd_ep_index;
+        xhc.db_regs[dev->slot_id].target = slot->dci_in;
         
         kbd_initialized[dev->slot_id] = 1;
         usb_hid_detected = 1;
@@ -69,21 +69,7 @@ void usb_hid_poll() {
         if (!kbd_initialized[sid]) continue;
         
         xhci_slot_data_t *slot = &xhc.slots[sid];
-        if (!slot->kbd_ring) continue;
+        if (!slot->ring1_ptr) continue;
         
-        // Check if current TRB is finished
-        // Note: xHCI Transfer Events are the right way, but we can also poll the TRB cycle bit
-        // if we are the ones who set it. However, the HC will clear it? No, the HC sets the cycle bit
-        // in the Event Ring. In the Transfer Ring, the TRB remains as is.
-        // So we really should look at the Event Ring.
-        
-        // But wait! xhci_irq already polls the Event Ring and prints "Transfer Event".
-        // If I can't edit xhci.c, I can't catch that event easily.
-        
-        // Alternative: Use the "last_report" mechanism if xhci.c were updating it.
-        // But it doesn't.
-        
-        // Since I can't edit xhci.c, I'll have to poll the memory directly if the HC writes back.
-        // Most HCs write back the number of bytes transferred to the TRB status field if ISP is set.
     }
 }

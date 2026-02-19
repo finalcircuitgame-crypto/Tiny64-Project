@@ -1,13 +1,13 @@
 #include "xhci.h"
-#include "../../lib/math.h"
-#include "../../lib/string.h"
-#include "../../memory/heap.h"
-#include "../hid/input.h" // For pushing keys
-#include "../pci/pci.h"
-#include "../platform/serial.h"
-#include "usb.h"
+#include "../../../lib/math.h"
+#include "../../../lib/string.h"
+#include "../../../memory/heap.h"
+#include "../../hid/input.h" // For pushing keys
+#include "../../pci/pci.h"
+#include "../../platform/serial.h"
+#include "../usb.h"
 
-static xhci_controller_t xhc;
+xhci_controller_t xhc;
 
 // Keyboard lookup table (Scan Code Set 1/2 mapping simplified for Boot
 // Protocol) This is a very basic US-QWERTY map for HID usage IDs
@@ -209,12 +209,13 @@ static void *xhci_get_context(void *base, int index) {
   return (void *)((uintptr_t)base + (index * xhc.context_size));
 }
 
-void xhci_ring_ep_doorbell(uint8_t slot_id, uint8_t doorbell_target) {
+static void xhci_ring_ep_doorbell(uint8_t slot_id, uint8_t doorbell_target) {
   xhc.db_regs[slot_id].target = doorbell_target;
 }
 
-void xhci_transfer_enqueue(uint8_t slot_id, uint8_t ep_index, uint64_t param,
-                           uint32_t status, uint32_t control) {
+static void xhci_transfer_enqueue(uint8_t slot_id, uint8_t ep_index,
+                                  uint64_t param, uint32_t status,
+                                  uint32_t control) {
   xhci_slot_data_t *slot = &xhc.slots[slot_id];
   xhci_trb_t *ring = 0;
   uint32_t *enqueue = 0, *cycle = 0;
@@ -249,8 +250,8 @@ void xhci_transfer_enqueue(uint8_t slot_id, uint8_t ep_index, uint64_t param,
   }
 }
 
-void xhci_ep0_enqueue(uint8_t slot_id, uint64_t param, uint32_t status,
-                      uint32_t control) {
+static void xhci_ep0_enqueue(uint8_t slot_id, uint64_t param, uint32_t status,
+                             uint32_t control) {
   xhci_transfer_enqueue(slot_id, 0, param, status, control);
 }
 
@@ -419,8 +420,8 @@ void xhci_configure_device(uint8_t slot_id) {
   }
 }
 
-int xhci_msc_read_sectors(uint8_t slot_id, uint32_t lba, uint16_t count,
-                          void *buf) {
+int generic_xhci_msc_read_sectors(uint8_t slot_id, uint32_t lba, uint16_t count,
+                                  void *buf) {
   uint8_t cmd[10] = {0x28, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint32_t blba = __builtin_bswap32(lba);
   uint16_t bcnt = __builtin_bswap16(count);
@@ -433,8 +434,8 @@ int xhci_msc_read_sectors(uint8_t slot_id, uint32_t lba, uint16_t count,
   return r;
 }
 
-int xhci_msc_write_sectors(uint8_t slot_id, uint32_t lba, uint16_t count,
-                           const void *buf) {
+int generic_xhci_msc_write_sectors(uint8_t slot_id, uint32_t lba, uint16_t count,
+                                   const void *buf) {
   uint8_t cmd[10] = {0x2A, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint32_t blba = __builtin_bswap32(lba);
   uint16_t bcnt = __builtin_bswap16(count);
@@ -520,7 +521,7 @@ void xhci_check_ports() {
   }
 }
 
-void usb_poll() {
+void xhci_poll() {
   if (!xhc.base_addr)
     return;
   static int pc = 0;
@@ -588,7 +589,7 @@ void usb_poll() {
   }
 }
 
-int xhci_find_msc_slot() {
+int generic_xhci_find_msc_slot() {
   for (int i = 1; i <= xhc.max_slots; i++)
     if (xhc.slots[i].device_type == 3)
       return i;

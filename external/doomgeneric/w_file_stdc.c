@@ -17,10 +17,10 @@
 //
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "m_misc.h"
 #include "w_file.h"
-#include "z_zone.h"
 
 typedef struct
 {
@@ -29,6 +29,8 @@ typedef struct
 } stdc_wad_file_t;
 
 extern wad_file_class_t stdc_wad_file;
+
+static stdc_wad_file_t *stdc_wad_instance;
 
 static wad_file_t *W_StdC_OpenFile(char *path)
 {
@@ -44,7 +46,31 @@ static wad_file_t *W_StdC_OpenFile(char *path)
 
     // Create a new stdc_wad_file_t to hold the file handle.
 
-    result = Z_Malloc(sizeof(stdc_wad_file_t), PU_STATIC, 0);
+    if (stdc_wad_instance == NULL)
+    {
+        stdc_wad_instance = malloc(sizeof(stdc_wad_file_t));
+
+        if (stdc_wad_instance == NULL)
+        {
+            fclose(fstream);
+            return NULL;
+        }
+
+        // Initialize fields.
+        stdc_wad_instance->wad.file_class = &stdc_wad_file;
+        stdc_wad_instance->wad.mapped = NULL;
+        stdc_wad_instance->wad.length = 0;
+        stdc_wad_instance->fstream = NULL;
+    }
+
+    result = stdc_wad_instance;
+
+    if (result->fstream != NULL)
+    {
+        fclose(result->fstream);
+        result->fstream = NULL;
+    }
+
     result->wad.file_class = &stdc_wad_file;
     result->wad.mapped = NULL;
     result->wad.length = M_FileLength(fstream);
@@ -55,12 +81,13 @@ static wad_file_t *W_StdC_OpenFile(char *path)
 
 static void W_StdC_CloseFile(wad_file_t *wad)
 {
-    stdc_wad_file_t *stdc_wad;
+    (void) wad;
 
-    stdc_wad = (stdc_wad_file_t *) wad;
-
-    fclose(stdc_wad->fstream);
-    Z_Free(stdc_wad);
+    if (stdc_wad_instance != NULL && stdc_wad_instance->fstream != NULL)
+    {
+        fclose(stdc_wad_instance->fstream);
+        stdc_wad_instance->fstream = NULL;
+    }
 }
 
 // Read data from the specified position in the file into the 
@@ -69,18 +96,62 @@ static void W_StdC_CloseFile(wad_file_t *wad)
 size_t W_StdC_Read(wad_file_t *wad, unsigned int offset,
                    void *buffer, size_t buffer_len)
 {
-    stdc_wad_file_t *stdc_wad;
     size_t result;
 
-    stdc_wad = (stdc_wad_file_t *) wad;
+    (void) wad;
+
+    if (stdc_wad_instance == NULL || stdc_wad_instance->fstream == NULL)
+    {
+        return 0;
+    }
 
     // Jump to the specified position in the file.
 
-    fseek(stdc_wad->fstream, offset, SEEK_SET);
+    fseek(stdc_wad_instance->fstream, offset, SEEK_SET);
 
     // Read into the buffer.
 
-    result = fread(buffer, 1, buffer_len, stdc_wad->fstream);
+    result = fread(buffer, 1, buffer_len, stdc_wad_instance->fstream);
+
+    if (buffer != NULL)
+    {
+        const unsigned int pnames_off = 2588260;
+        // Log any read that overlaps the PNAMES header region.
+        if (offset <= pnames_off + 4 && offset + (unsigned int)buffer_len >= pnames_off)
+        {
+            unsigned char *b = (unsigned char *) buffer;
+            unsigned int delta = 0;
+            unsigned int p0 = 0, p1 = 0, p2 = 0, p3 = 0;
+            int have_p = 0;
+
+            if (offset <= pnames_off)
+            {
+                delta = pnames_off - offset;
+                if ((size_t) delta + 4 <= result)
+                {
+                    have_p = 1;
+                    p0 = b[delta + 0];
+                    p1 = b[delta + 1];
+                    p2 = b[delta + 2];
+                    p3 = b[delta + 3];
+                }
+            }
+
+            if (have_p)
+            {
+                printf("W_StdC_Read: off=%u len=%u read=%u head=%02x %02x %02x %02x %02x %02x %02x %02x pnames@+%u=%02x %02x %02x %02x\n",
+                       offset, (unsigned int)buffer_len, (unsigned int)result,
+                       b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                       delta, p0, p1, p2, p3);
+            }
+            else
+            {
+                printf("W_StdC_Read: off=%u len=%u read=%u head=%02x %02x %02x %02x %02x %02x %02x %02x\n",
+                       offset, (unsigned int)buffer_len, (unsigned int)result,
+                       b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
+            }
+        }
+    }
 
     return result;
 }

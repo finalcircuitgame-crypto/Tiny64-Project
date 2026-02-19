@@ -20,7 +20,11 @@ void usb_init() {
 
 void usb_poll() {
     if (g_using_qemu_xhci) {
+#if USE_QEMU_XHCI
         qemu_usb_poll();
+#else
+        xhci_poll();
+#endif
     } else {
         xhci_poll();
     }
@@ -28,26 +32,35 @@ void usb_poll() {
 
 int xhci_find_msc_slot() {
     if (g_using_qemu_xhci) {
+#if USE_QEMU_XHCI
         return qemu_xhci_find_msc_slot();
-    } else {
+#else
         return generic_xhci_find_msc_slot();
+#endif
     }
+    return generic_xhci_find_msc_slot();
 }
 
 int xhci_msc_read_sectors(uint8_t slot_id, uint32_t lba, uint16_t count, void* buf) {
     if (g_using_qemu_xhci) {
+#if USE_QEMU_XHCI
         return qemu_xhci_msc_read_sectors(slot_id, lba, count, buf);
-    } else {
+#else
         return generic_xhci_msc_read_sectors(slot_id, lba, count, buf);
+#endif
     }
+    return generic_xhci_msc_read_sectors(slot_id, lba, count, buf);
 }
 
 int xhci_msc_write_sectors(uint8_t slot_id, uint32_t lba, uint16_t count, const void* buf) {
     if (g_using_qemu_xhci) {
+#if USE_QEMU_XHCI
         return qemu_xhci_msc_write_sectors(slot_id, lba, count, buf);
-    } else {
+#else
         return generic_xhci_msc_write_sectors(slot_id, lba, count, buf);
+#endif
     }
+    return generic_xhci_msc_write_sectors(slot_id, lba, count, buf);
 }
 
 void usb_set_connect_callback(usb_callback_t cb) {
