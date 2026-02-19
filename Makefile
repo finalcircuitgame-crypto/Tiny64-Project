@@ -1,29 +1,36 @@
-# Toolchain
-UEFI_CC := x86_64-w64-mingw32-gcc
-CC := gcc
-LD := ld
-AS := as
-OBJCOPY := objcopy
+# Tools
+CC = gcc
+LD = ld
+OBJCOPY = objcopy
 
 # Directories
-BUILD_DIR := build
-BOOT_DIR := boot
-KERNEL_DIR := kernel
+SRCDIR = src
+BOOTDIR = $(SRCDIR)/boot
+KERNELDIR = $(SRCDIR)/kernel
+DISTDIR = dist
+OBJDIR = $(DISTDIR)/obj
 
-# Bootloader sources
-BOOT_SRC_C := $(shell find $(BOOT_DIR)/c -name '*.c')
+# Bootloader Flags
+EFI_INC = /usr/include/efi
+EFI_LIB = /usr/lib
+CFLAGS_EFI = -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -I$(EFI_INC) -I$(EFI_INC)/x86_64 -I$(SRCDIR)/include -DEFI_FUNCTION_WRAPPER -DGNU_EFI_USE_MS_ABI
+LDFLAGS_EFI = -nostdlib -znocombreloc -T $(EFI_LIB)/elf_x86_64_efi.lds -shared -Bsymbolic -L$(EFI_LIB) $(EFI_LIB)/crt0-efi-x86_64.o
 
-BOOT_OBJS := \
-	$(patsubst $(BOOT_DIR)/c/%.c,$(BUILD_DIR)/boot/c/%.o,$(BOOT_SRC_C))
+# Kernel Flags
+CFLAGS_KERNEL = -ffreestanding -mno-red-zone -mcmodel=large -fno-pie -I$(SRCDIR)/include
+LDFLAGS_KERNEL = -nostdlib -T $(KERNELDIR)/linker.ld -z max-page-size=0x1000
 
-BOOT_EFI := $(BUILD_DIR)/boot/BOOTX64.EFI
+# Targets
+BOOTLOADER_EFI = $(DISTDIR)/BOOTX64.EFI
+KERNEL_ELF = $(DISTDIR)/kernel.elf
+DISK_IMG = $(DISTDIR)/tiny64.img
 
-# Flags
-USE_USB ?= 0
-USE_QEMU_XHCI ?= 0
-DISABLE_PS2 ?= 0
-BOOT_CFLAGS := -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -g -Iboot/include -fno-stack-check -fno-asynchronous-unwind-tables
+# Kernel Objects
+# Recursively find all C and S files
+KERNEL_SRCS := $(shell find $(KERNELDIR) -name "*.c")
+KERNEL_ASMS := $(shell find $(KERNELDIR) -name "*.s")
 
+<<<<<<< HEAD
 # Kernel sources
 KERNEL_SRC_C_ALL := $(shell find $(KERNEL_DIR)/c -name '*.c')
 
@@ -36,37 +43,26 @@ else
 KERNEL_SRC_C := $(filter-out $(KERNEL_DIR)/c/drivers/usb/xhci/qemu/xhci.c,$(KERNEL_SRC_C_ALL))
 endif
 XHCI_INCLUDE := -I$(KERNEL_DIR)/c/drivers/usb/xhci -I$(KERNEL_DIR)/c/drivers/usb/xhci/qemu
+=======
+# Map to object files in OBJDIR, maintaining directory structure
+KERNEL_OBJS := $(patsubst $(KERNELDIR)/%.c, $(OBJDIR)/%.o, $(KERNEL_SRCS)) \
+              $(patsubst $(KERNELDIR)/%.s, $(OBJDIR)/%_asm.o, $(KERNEL_ASMS))
+FONT_OBJ = $(OBJDIR)/font.o
+>>>>>>> 0b790d024abc49e24b6580cd08f06b247c2b72a1
 
-# Doom Generic Sources
-DOOM_DIR := external/doomgeneric
-DOOM_SRC := $(filter-out $(DOOM_DIR)/doomgeneric_allegro.c \
-                        $(DOOM_DIR)/doomgeneric_emscripten.c \
-                        $(DOOM_DIR)/doomgeneric_linuxvt.c \
-                        $(DOOM_DIR)/doomgeneric_sdl.c \
-                        $(DOOM_DIR)/doomgeneric_soso.c \
-                        $(DOOM_DIR)/doomgeneric_sosox.c \
-                        $(DOOM_DIR)/doomgeneric_win.c \
-                        $(DOOM_DIR)/doomgeneric_xlib.c \
-                        $(DOOM_DIR)/i_allegromusic.c \
-                        $(DOOM_DIR)/i_allegrosound.c \
-                        $(DOOM_DIR)/i_sdlmusic.c \
-                        $(DOOM_DIR)/i_sdlsound.c \
-                        $(DOOM_DIR)/i_cdmus.c \
-                        $(DOOM_DIR)/i_joystick.c \
-                        $(DOOM_DIR)/dummy.c, \
-                        $(wildcard $(DOOM_DIR)/*.c))
+all: setup $(DISK_IMG)
 
-KERNEL_SRC_CPP := $(shell find $(KERNEL_DIR)/cpp -name '*.cpp')
-KERNEL_SRC_ASM := $(shell find $(KERNEL_DIR)/asm -name '*.S')
+setup:
+	mkdir -p $(OBJDIR)
 
-KERNEL_OBJS := \
-	$(patsubst $(KERNEL_DIR)/c/%.c,$(BUILD_DIR)/kernel/c/%.o,$(KERNEL_SRC_C)) \
-	$(patsubst $(DOOM_DIR)/%.c,$(BUILD_DIR)/kernel/doom/%.o,$(DOOM_SRC)) \
-	$(BUILD_DIR)/kernel/c/core/commands.o \
-	$(BUILD_DIR)/kernel/cpp/ui/doom.o \
-	$(patsubst $(KERNEL_DIR)/cpp/%.cpp,$(BUILD_DIR)/kernel/cpp/%.o,$(KERNEL_SRC_CPP)) \
-	$(patsubst $(KERNEL_DIR)/asm/%.S,$(BUILD_DIR)/kernel/asm/%.o,$(KERNEL_SRC_ASM))
+# Build Bootloader
+$(BOOTLOADER_EFI): $(BOOTDIR)/main.c
+	@mkdir -p $(dir $(OBJDIR)/boot_main.o)
+	$(CC) $(CFLAGS_EFI) -c $< -o $(OBJDIR)/boot_main.o
+	$(LD) $(LDFLAGS_EFI) $(OBJDIR)/boot_main.o -o $(OBJDIR)/boot_main.so -lgnuefi -lefi
+	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym  -j .rel -j .rela -j .reloc --target=efi-app-x86_64 $(OBJDIR)/boot_main.so $@
 
+<<<<<<< HEAD
 KERNEL_BIN := $(BUILD_DIR)/kernel/kernel.elf
 KERNEL_LDS := $(KERNEL_DIR)/config/linker/kernel.ld
 
@@ -86,40 +82,34 @@ all: $(BOOT_EFI) $(KERNEL_BIN)
 
 # Bootloader build (REAL UEFI PE32+)
 $(BOOT_EFI): $(BOOT_OBJS)
+=======
+# Embed Font
+$(FONT_OBJ): CGA.F08
+>>>>>>> 0b790d024abc49e24b6580cd08f06b247c2b72a1
 	@mkdir -p $(dir $@)
-	$(UEFI_CC) $(BOOT_CFLAGS) \
-		-Wl,-entry,efi_main \
-		-Wl,--subsystem,10 \
-		-nostdlib \
-		-o $@ $^
+	$(OBJCOPY) -I binary -O elf64-x86-64 -B i386 $< $@
 
-# Kernel build
-$(KERNEL_BIN): $(KERNEL_OBJS)
-	@mkdir -p $(dir $@)
-	$(LD) $(LDFLAGS) -T $(KERNEL_LDS) -o $@ $^
+# Build Kernel
+$(KERNEL_ELF): $(KERNEL_OBJS) $(FONT_OBJ)
+	$(LD) $(LDFLAGS_KERNEL) $(KERNEL_OBJS) $(FONT_OBJ) -o $@
 
-$(BUILD_DIR)/boot/c/%.o: $(BOOT_DIR)/c/%.c
+# Pattern rules for nested kernel directories
+$(OBJDIR)/%.o: $(KERNELDIR)/%.c
 	@mkdir -p $(dir $@)
-	$(UEFI_CC) $(BOOT_CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS_KERNEL) -c $< -o $@
 
-$(BUILD_DIR)/kernel/c/%.o: $(KERNEL_DIR)/c/%.c
+$(OBJDIR)/%_asm.o: $(KERNELDIR)/%.s
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS_KERNEL) -c $< -o $@
 
-$(BUILD_DIR)/kernel/doom/%.o: $(DOOM_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/kernel/cpp/%.o: $(KERNEL_DIR)/cpp/%.cpp
-	@mkdir -p $(dir $@)
-	g++ $(CPPFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/kernel/asm/%.o: $(KERNEL_DIR)/asm/%.S
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+# Create Disk Image
+$(DISK_IMG): $(BOOTLOADER_EFI) $(KERNEL_ELF)
+	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=64
+	mformat -i $(DISK_IMG) -F ::
+	mmd -i $(DISK_IMG) ::/EFI
+	mmd -i $(DISK_IMG) ::/EFI/BOOT
+	mcopy -o -i $(DISK_IMG) $(BOOTLOADER_EFI) ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -o -i $(DISK_IMG) $(KERNEL_ELF) ::/kernel.elf
 
 clean:
-	rm -rf $(BUILD_DIR)
-
-run: all
-	bash ./run.sh
+	rm -rf $(DISTDIR)/*

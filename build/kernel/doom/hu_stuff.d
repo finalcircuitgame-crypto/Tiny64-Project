@@ -1,0 +1,21 @@
+build/kernel/doom/hu_stuff.o: external/doomgeneric/hu_stuff.c \
+ external/doomgeneric/doomdef.h external/doomgeneric/doomtype.h \
+ external/doomgeneric/i_timer.h external/doomgeneric/d_mode.h \
+ external/doomgeneric/doomkeys.h external/doomgeneric/z_zone.h \
+ external/doomgeneric/deh_main.h external/doomgeneric/doomfeatures.h \
+ external/doomgeneric/deh_str.h external/doomgeneric/sha1.h \
+ external/doomgeneric/i_swap.h external/doomgeneric/i_video.h \
+ external/doomgeneric/hu_stuff.h external/doomgeneric/d_event.h \
+ external/doomgeneric/hu_lib.h external/doomgeneric/r_defs.h \
+ external/doomgeneric/m_fixed.h external/doomgeneric/d_think.h \
+ external/doomgeneric/p_mobj.h external/doomgeneric/tables.h \
+ external/doomgeneric/doomdata.h external/doomgeneric/info.h \
+ external/doomgeneric/v_patch.h external/doomgeneric/m_controls.h \
+ external/doomgeneric/m_misc.h external/doomgeneric/w_wad.h \
+ external/doomgeneric/w_file.h external/doomgeneric/s_sound.h \
+ external/doomgeneric/sounds.h external/doomgeneric/i_sound.h \
+ external/doomgeneric/doomstat.h external/doomgeneric/d_loop.h \
+ external/doomgeneric/net_defs.h external/doomgeneric/d_ticcmd.h \
+ external/doomgeneric/d_player.h external/doomgeneric/d_items.h \
+ external/doomgeneric/p_pspr.h external/doomgeneric/dstrings.h \
+ external/doomgeneric/d_englsh.h

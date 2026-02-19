@@ -1,0 +1,17 @@
+build/kernel/doom/hu_lib.o: external/doomgeneric/hu_lib.c \
+ external/doomgeneric/doomdef.h external/doomgeneric/doomtype.h \
+ external/doomgeneric/i_timer.h external/doomgeneric/d_mode.h \
+ external/doomgeneric/doomkeys.h external/doomgeneric/v_video.h \
+ external/doomgeneric/v_patch.h external/doomgeneric/i_swap.h \
+ external/doomgeneric/hu_lib.h external/doomgeneric/r_defs.h \
+ external/doomgeneric/m_fixed.h external/doomgeneric/d_think.h \
+ external/doomgeneric/p_mobj.h external/doomgeneric/tables.h \
+ external/doomgeneric/doomdata.h external/doomgeneric/info.h \
+ external/doomgeneric/i_video.h external/doomgeneric/r_local.h \
+ external/doomgeneric/r_data.h external/doomgeneric/r_state.h \
+ external/doomgeneric/d_player.h external/doomgeneric/d_items.h \
+ external/doomgeneric/p_pspr.h external/doomgeneric/d_ticcmd.h \
+ external/doomgeneric/net_defs.h external/doomgeneric/sha1.h \
+ external/doomgeneric/r_main.h external/doomgeneric/r_bsp.h \
+ external/doomgeneric/r_segs.h external/doomgeneric/r_plane.h \
+ external/doomgeneric/r_things.h external/doomgeneric/r_draw.h

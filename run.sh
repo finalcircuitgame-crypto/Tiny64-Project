@@ -1,14 +1,8 @@
 #!/bin/bash
 
-# --- Visual Enhancements ---
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+set -e
 
+<<<<<<< HEAD
 print_banner() {
     echo -e "${CYAN}"
     echo "  _______ _             __   _  _   "
@@ -152,22 +146,22 @@ fi
 if [ -d "assets" ]; then
     print_step "Copying assets to disk root"
     mcopy -i build/disk.img@@1M assets/* ::/
+=======
+if ! make all; then
+    echo "Build failed; not launching QEMU."
+    exit 1
+>>>>>>> 0b790d024abc49e24b6580cd08f06b247c2b72a1
 fi
 
-# Create placeholder logs file (10MB) to reserve clusters
-print_step "Reserving space for serial logs"
-dd if=/dev/zero of=build/serial.txt bs=1M count=10 >/dev/null 2>&1
-mcopy -i build/disk.img@@1M build/serial.txt ::/serial.txt
-rm build/serial.txt
+OVMF_CODE=/usr/share/OVMF/OVMF_CODE_4M.fd
+OVMF_VARS_TEMPLATE=/usr/share/OVMF/OVMF_VARS_4M.fd
 
-if [ "$RECOVERY_FLAGS" == "1" ]; then
-    echo "  [+] Adding recovery trigger"
-    # Create empty file
-    echo "" >build/recovery_trigger
-    mcopy -i build/disk.img@@1M build/recovery_trigger ::/RECOVERY
-    rm build/recovery_trigger
+if [ ! -f "$OVMF_CODE" ]; then
+    echo "OVMF CODE firmware not found at $OVMF_CODE"
+    exit 1
 fi
 
+<<<<<<< HEAD
 if [ "$TRIAL_FLAGS" == "1" ]; then
     echo "  [+] Adding trial mode trigger"
     echo "" >build/trial_trigger
@@ -182,6 +176,13 @@ echo "------------------------------------------"
 echo "  Launch Successful! Spawning QEMU..."
 echo "------------------------------------------"
 echo -e "${NC}"
+=======
+# Use a writable local copy of VARS (NVRAM)
+mkdir -p build
+if [ ! -f build/OVMF_VARS_4M.fd ]; then
+    cp "$OVMF_VARS_TEMPLATE" build/OVMF_VARS_4M.fd
+fi
+>>>>>>> 0b790d024abc49e24b6580cd08f06b247c2b72a1
 
 SERIAL_FLAGS="-serial file:build/serial.log"
 if [[ "$*" == *"--serial"* ]]; then
@@ -189,11 +190,21 @@ if [[ "$*" == *"--serial"* ]]; then
 fi
 
 qemu-system-x86_64 \
-    -m 2G \
     -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
+<<<<<<< HEAD
     -drive if=pflash,format=raw,file="$OVMF_VARS" \
     -drive if=ide,file=build/disk.img,format=raw \
     -net none \
     $NET_FLAGS \
     $SERIAL_FLAGS \
     $USB_FLAGS
+=======
+    -drive if=pflash,format=raw,file=build/OVMF_VARS_4M.fd \
+    -drive format=raw,file=dist/tiny64.img \
+    -device qemu-xhci \
+    -device usb-kbd \
+    -device usb-mouse \
+    -nic none \
+    -serial stdio \
+    -boot order=c,menu=off
+>>>>>>> 0b790d024abc49e24b6580cd08f06b247c2b72a1

@@ -1,0 +1,8 @@
+build/kernel/doom/w_wad.o: external/doomgeneric/w_wad.c \
+ external/doomgeneric/doomtype.h external/doomgeneric/config.h \
+ external/doomgeneric/d_iwad.h external/doomgeneric/d_mode.h \
+ external/doomgeneric/i_swap.h external/doomgeneric/i_system.h \
+ external/doomgeneric/d_ticcmd.h external/doomgeneric/d_event.h \
+ external/doomgeneric/i_video.h external/doomgeneric/m_misc.h \
+ external/doomgeneric/z_zone.h external/doomgeneric/w_wad.h \
+ external/doomgeneric/w_file.h

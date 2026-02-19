@@ -1,0 +1,23 @@
+build/kernel/doom/p_map.o: external/doomgeneric/p_map.c \
+ external/doomgeneric/deh_misc.h external/doomgeneric/doomfeatures.h \
+ external/doomgeneric/m_bbox.h external/doomgeneric/m_fixed.h \
+ external/doomgeneric/m_random.h external/doomgeneric/doomtype.h \
+ external/doomgeneric/i_system.h external/doomgeneric/d_ticcmd.h \
+ external/doomgeneric/d_event.h external/doomgeneric/doomdef.h \
+ external/doomgeneric/i_timer.h external/doomgeneric/d_mode.h \
+ external/doomgeneric/m_argv.h external/doomgeneric/m_misc.h \
+ external/doomgeneric/p_local.h external/doomgeneric/r_local.h \
+ external/doomgeneric/tables.h external/doomgeneric/r_data.h \
+ external/doomgeneric/r_defs.h external/doomgeneric/d_think.h \
+ external/doomgeneric/p_mobj.h external/doomgeneric/doomdata.h \
+ external/doomgeneric/info.h external/doomgeneric/i_video.h \
+ external/doomgeneric/v_patch.h external/doomgeneric/r_state.h \
+ external/doomgeneric/d_player.h external/doomgeneric/d_items.h \
+ external/doomgeneric/p_pspr.h external/doomgeneric/net_defs.h \
+ external/doomgeneric/sha1.h external/doomgeneric/r_main.h \
+ external/doomgeneric/r_bsp.h external/doomgeneric/r_segs.h \
+ external/doomgeneric/r_plane.h external/doomgeneric/r_things.h \
+ external/doomgeneric/r_draw.h external/doomgeneric/p_spec.h \
+ external/doomgeneric/s_sound.h external/doomgeneric/sounds.h \
+ external/doomgeneric/i_sound.h external/doomgeneric/doomstat.h \
+ external/doomgeneric/d_loop.h
