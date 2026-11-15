@@ -3,7 +3,9 @@
 #include "../drivers/platform/serial.h"
 #include <stdint.h>
 
-#define HEAP_SIZE (128 * 1024 * 1024) /* 128 MB */
+// Keep the initial contiguous heap below the RAM available in QEMU and
+// leave room for page-level allocations used by xHCI, DMA, and the framebuffer.
+#define HEAP_SIZE (32 * 1024 * 1024) /* 32 MB */
 
 typedef struct heap_node {
     size_t size;
