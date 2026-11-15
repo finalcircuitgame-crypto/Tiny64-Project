@@ -43,8 +43,8 @@ OVMF_VARS="build/OVMF_VARS_4M.fd"
 
 print_step "Checking build environment"
 
-# Windows build output is kept alongside this repository on the F: drive.
-WIN_BUILD="$SCRIPT_DIR/build"
+# The Makefile's authoritative boot artifacts are written to dist/.
+DIST_BUILD="$SCRIPT_DIR/dist"
 WSL_MOUNT="build/mount"
 
 mkdir -p build "$WSL_MOUNT"
@@ -138,10 +138,10 @@ mmd -i build/disk.img@@1M ::/EFI
 mmd -i build/disk.img@@1M ::/EFI/BOOT
 
 # These are the boot artifacts produced for the desktop build.
-BOOTLOADER_IMAGE="$WIN_BUILD/boot/BOOTX64.EFI"
-KERNEL_IMAGE="$WIN_BUILD/kernel/kernel.elf"
+BOOTLOADER_IMAGE="$DIST_BUILD/BOOTX64.EFI"
+KERNEL_IMAGE="$DIST_BUILD/kernel.elf"
 if [[ ! -f "$BOOTLOADER_IMAGE" || ! -f "$KERNEL_IMAGE" ]]; then
-    print_error "Missing boot artifacts under $WIN_BUILD"
+    print_error "Missing fresh boot artifacts under $DIST_BUILD"
     echo "Expected:"
     echo "  $BOOTLOADER_IMAGE"
     echo "  $KERNEL_IMAGE"
