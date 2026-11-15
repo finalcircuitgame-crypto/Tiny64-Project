@@ -30,6 +30,50 @@ extern "C" {
 
 extern "C" void start_recovery_mode(void* fb);
 
+namespace {
+struct LaunchItem {
+    const char* label;
+    int action_id;
+    const uint32_t* icon_data;
+    uint32_t accent;
+};
+
+static const LaunchItem kTaskbarApps[] = {
+    {"Terminal", 1, icon_terminal_data, 0xFF273C75},
+    {"Explorer", 0, icon_explorer_data, 0xFFE67E22},
+    {"Notepad", 5, icon_notepad_data, 0xFFF1C40F},
+    {"DOOM", 6, nullptr, 0xFFC0392B},
+    {"Task Mgr", 2, icon_taskmgr_data, 0xFFC0392B},
+    {"Devices", 3, icon_devmgr_data, 0xFF16A085},
+    {"Settings", 4, icon_settings_data, 0xFF7F8C8D},
+    {"Browser", 10, icon_explorer_data, 0xFF3498DB},
+};
+
+static const LaunchItem kDesktopShortcuts[] = {
+    {"Computer", 0, icon_explorer_data, 0xFF3498DB},
+    {"Terminal", 1, icon_terminal_data, 0xFF273C75},
+    {"Browser", 10, icon_explorer_data, 0xFF3498DB},
+    {"Notepad", 5, icon_notepad_data, 0xFFF1C40F},
+    {"DOOM", 6, nullptr, 0xFFC0392B},
+    {"Network", 7, icon_ethernet_data, 0xFF3498DB},
+    {"Settings", 4, icon_settings_data, 0xFF7F8C8D},
+};
+
+static void open_launch_item(int action_id, FileExplorer& explorer, TerminalWindow& terminal,
+                             Notepad& notepad, DoomWindow& doom, TaskManager& taskmgr,
+                             DeviceManager& devmgr, SettingsWindow& settings, BrowserWindow& browser) {
+    if (action_id == 0) { explorer.SetClosed(false); explorer.SetMinimized(false); }
+    else if (action_id == 1) { terminal.SetClosed(false); terminal.SetMinimized(false); }
+    else if (action_id == 2) { taskmgr.SetClosed(false); taskmgr.SetMinimized(false); }
+    else if (action_id == 3) { devmgr.SetClosed(false); devmgr.SetMinimized(false); }
+    else if (action_id == 4) { settings.SetClosed(false); settings.SetMinimized(false); }
+    else if (action_id == 5) { notepad.SetClosed(false); notepad.SetMinimized(false); }
+    else if (action_id == 6) { doom.SetClosed(false); doom.SetMinimized(false); }
+    else if (action_id == 7) { devmgr.SetClosed(false); devmgr.SetMinimized(false); }
+    else if (action_id == 10) { browser.SetClosed(false); browser.SetMinimized(false); }
+}
+}
+
 extern "C" void desktop_loop(Framebuffer* fb) {
     Renderer renderer(fb);
     
@@ -51,7 +95,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
 
     uint32_t bg_color = apply_appearance(theme, wallpaper);
     
-    uint32_t taskbar_color = 0xCC2C3E50; 
+    uint32_t taskbar_color = 0xD82C3E50;
     
     // Window Management
     WindowManager wm;
@@ -92,8 +136,11 @@ extern "C" void desktop_loop(Framebuffer* fb) {
 
     while (true) {
         usb_poll();
-        e1000_poll_rx();
-        tcp_poll();
+        static int net_poll_tick = 0;
+        if ((net_poll_tick++ & 1) == 0) {
+            e1000_poll_rx();
+            tcp_poll();
+        }
         input_mouse_get_state(&ms);
         
         bool left_btn = (ms.buttons & 1);
@@ -147,13 +194,12 @@ extern "C" void desktop_loop(Framebuffer* fb) {
         bool handled_by_shell = false;
 
         if (btn_released) {
-             // Taskbar Clicks
+            // Taskbar clicks
             if (mouseY >= (int)fb->height - 45) {
                 handled_by_shell = true;
                 if (mouseX >= 10 && mouseX <= 45) {
                     start_menu_open = !start_menu_open;
                 } else {
-                    // Check app icons
                     int ix = 55;
                     auto check_app_click = [&](Window& w) {
                         if (w.IsClosed()) return false;
@@ -165,17 +211,17 @@ extern "C" void desktop_loop(Framebuffer* fb) {
                         ix += 125;
                         return false;
                     };
-                                        if (!check_app_click(terminal))
-                                            if (!check_app_click(explorer))
-                                                if (!check_app_click(notepad))
-                                                    if (!check_app_click(doom))
-                                                        if (!check_app_click(taskmgr))
-                                                            if (!check_app_click(devmgr))
-                                                                if (!check_app_click(settings))
-                                                                    check_app_click(browser);
+                    if (!check_app_click(terminal))
+                        if (!check_app_click(explorer))
+                            if (!check_app_click(notepad))
+                                if (!check_app_click(doom))
+                                    if (!check_app_click(taskmgr))
+                                        if (!check_app_click(devmgr))
+                                            if (!check_app_click(settings))
+                                                check_app_click(browser);
                 }
             } else if (start_menu_open) {
-                // Menu Clicks (use animated Y)
+                // Menu clicks (use animated Y)
                 int current_menu_y = fb->height - 45 - (int)(450 * menu_anim);
                 if (mouseX >= 10 && mouseX <= 230 && mouseY >= current_menu_y && mouseY <= current_menu_y + 450) {
                      handled_by_shell = true;
@@ -204,7 +250,7 @@ extern "C" void desktop_loop(Framebuffer* fb) {
         // Windows
         wm.DrawAll(renderer);
 
-        // Taskbar (with subtle shadow)
+        // Taskbar
         int tb_h = 45;
         int tb_y = fb->height - tb_h;
         renderer.fill_rect(0, tb_y - 4, fb->width, 4, 0x44000000);
@@ -212,38 +258,38 @@ extern "C" void desktop_loop(Framebuffer* fb) {
         
         int icon_x = 10;
         // Start Button
-        renderer.draw_rounded_rect(icon_x, tb_y + 5, 35, 35, 5, start_menu_open ? 0x88FFFFFF : 0xFF3498DB);
+        renderer.draw_rounded_rect(icon_x, tb_y + 5, 35, 35, 8, start_menu_open ? 0x88FFFFFF : 0xFF3498DB);
         renderer.draw_string("T", icon_x + 12, tb_y + 12, 0xFFFFFFFF, 2);
         icon_x += 45;
 
-        // App Icons with Logos
-        auto draw_app_icon = [&](bool closed, bool minimized, const char* label, const uint32_t* icon_data, uint32_t logo_col, int& ix) {
-            if (closed) return;
+        // App icons with active-state accents
+        auto draw_app_icon = [&](const Window& w, const LaunchItem& item, int& ix) {
+            if (w.IsClosed()) return;
+            bool minimized = w.IsMinimized();
             bool active = !minimized;
             bool hover = (mouseX >= ix && mouseX <= ix + 120 && mouseY >= tb_y);
-            uint32_t col = active ? 0x88FFFFFF : (hover ? 0x66FFFFFF : 0x44FFFFFF);
-            renderer.draw_rounded_rect(ix, tb_y + 5, 120, 35, 5, col);
+            uint32_t col = active ? 0x92FFFFFF : (hover ? 0x66FFFFFF : 0x44FFFFFF);
+            renderer.draw_rounded_rect(ix, tb_y + 5, 120, 35, 8, col);
             
-            // Draw Mini Logo
-            if (icon_data) {
-                renderer.draw_image(icon_data, ix + 5, tb_y + 7, 32, 32);
+            if (item.icon_data) {
+                renderer.draw_image(item.icon_data, ix + 5, tb_y + 7, 32, 32);
             } else {
-                renderer.draw_rounded_rect(ix + 5, tb_y + 10, 25, 25, 3, logo_col);
+                renderer.draw_rounded_rect(ix + 5, tb_y + 10, 25, 25, 5, item.accent);
             }
             
-            renderer.draw_string(label, ix + 40, tb_y + 15, 0xFFFFFFFF, 1);
+            renderer.draw_string(item.label, ix + 40, tb_y + 15, 0xFFFFFFFF, 1);
             renderer.fill_rect(ix + 65, tb_y + 38, 4, 3, minimized ? 0xFF999999 : 0xFF3498DB);
             ix += 125;
         };
 
-        draw_app_icon(terminal.IsClosed(), terminal.IsMinimized(), "Terminal", icon_terminal_data, 0xFF273C75, icon_x);
-        draw_app_icon(explorer.IsClosed(), explorer.IsMinimized(), "Explorer", icon_explorer_data, 0xFFE67E22, icon_x);
-        draw_app_icon(notepad.IsClosed(), notepad.IsMinimized(), "Notepad", icon_notepad_data, 0xFFF1C40F, icon_x);
-        draw_app_icon(doom.IsClosed(), doom.IsMinimized(), "DOOM", nullptr, 0xFFC0392B, icon_x);
-        draw_app_icon(taskmgr.IsClosed(), taskmgr.IsMinimized(), "Task Mgr", icon_taskmgr_data, 0xFFC0392B, icon_x);
-        draw_app_icon(devmgr.IsClosed(), devmgr.IsMinimized(), "Devices", icon_devmgr_data, 0xFF16A085, icon_x);
-        draw_app_icon(settings.IsClosed(), settings.IsMinimized(), "Settings", icon_settings_data, 0xFF7F8C8D, icon_x);
-        draw_app_icon(browser.IsClosed(), browser.IsMinimized(), "Browser", icon_explorer_data, 0xFF3498DB, icon_x);
+        draw_app_icon(terminal, kTaskbarApps[0], icon_x);
+        draw_app_icon(explorer, kTaskbarApps[1], icon_x);
+        draw_app_icon(notepad, kTaskbarApps[2], icon_x);
+        draw_app_icon(doom, kTaskbarApps[3], icon_x);
+        draw_app_icon(taskmgr, kTaskbarApps[4], icon_x);
+        draw_app_icon(devmgr, kTaskbarApps[5], icon_x);
+        draw_app_icon(settings, kTaskbarApps[6], icon_x);
+        draw_app_icon(browser, kTaskbarApps[7], icon_x);
         
         // Network Status Icon
         renderer.draw_image(icon_ethernet_data, fb->width - 130, tb_y + 7, 32, 32);
@@ -324,45 +370,23 @@ extern "C" void desktop_loop(Framebuffer* fb) {
             }
         }
 
-        // Desktop Shortcuts
-        struct Shortcut {
-            const char* name;
-            int x, y;
-            int action_id;
-            const uint32_t* icon_data;
-            uint32_t color;
-        };
-        Shortcut shortcuts[] = {
-            {"Computer", 20, 20, 0, icon_explorer_data, 0xFF3498DB},
-            {"Terminal", 20, 100, 1, icon_terminal_data, 0xFF273C75},
-            {"Browser", 20, 180, 10, icon_explorer_data, 0xFF3498DB},
-            {"Notepad", 20, 260, 5, icon_notepad_data, 0xFFF1C40F},
-            {"DOOM", 20, 340, 6, nullptr, 0xFFC0392B},
-            {"Network", 20, 420, 7, icon_ethernet_data, 0xFF3498DB},
-            {"Settings", 20, 500, 4, icon_settings_data, 0xFF7F8C8D}
-        };
-
-        for(int i=0; i<7; i++) {
-            bool hover = (mouseX >= shortcuts[i].x && mouseX <= shortcuts[i].x + 60 && mouseY >= shortcuts[i].y && mouseY <= shortcuts[i].y + 70);
+        // Desktop shortcuts
+        for (int i = 0; i < 7; i++) {
+            int sx = 20;
+            int sy = 20 + i * 80;
+            bool hover = (mouseX >= sx && mouseX <= sx + 60 && mouseY >= sy && mouseY <= sy + 70);
             if (hover) {
-                renderer.draw_rounded_rect(shortcuts[i].x - 5, shortcuts[i].y - 5, 70, 80, 5, 0x33FFFFFF);
+                renderer.draw_rounded_rect(sx - 5, sy - 5, 70, 80, 8, 0x33FFFFFF);
                 if (btn_released && !handled_by_shell) {
-                   int aid = shortcuts[i].action_id;
-                   if (aid == 0) { explorer.SetClosed(false); explorer.SetMinimized(false); }
-                   if (aid == 1) { terminal.SetClosed(false); terminal.SetMinimized(false); }
-                   if (aid == 10) { browser.SetClosed(false); browser.SetMinimized(false); }
-                   if (aid == 5) { notepad.SetClosed(false); notepad.SetMinimized(false); }
-                   if (aid == 6) { doom.SetClosed(false); doom.SetMinimized(false); }
-                   if (aid == 4) { settings.SetClosed(false); settings.SetMinimized(false); }
-                   if (aid == 7) { devmgr.SetClosed(false); devmgr.SetMinimized(false); }
+                   open_launch_item(kDesktopShortcuts[i].action_id, explorer, terminal, notepad, doom, taskmgr, devmgr, settings, browser);
                 }
             }
-            if (shortcuts[i].icon_data) {
-                renderer.draw_image(shortcuts[i].icon_data, shortcuts[i].x + 14, shortcuts[i].y + 5, 32, 32);
+            if (kDesktopShortcuts[i].icon_data) {
+                renderer.draw_image(kDesktopShortcuts[i].icon_data, sx + 14, sy + 5, 32, 32);
             } else {
-                renderer.draw_rounded_rect(shortcuts[i].x + 10, shortcuts[i].y + 5, 40, 40, 8, shortcuts[i].color);
+                renderer.draw_rounded_rect(sx + 10, sy + 5, 40, 40, 8, kDesktopShortcuts[i].accent);
             }
-            renderer.draw_string(shortcuts[i].name, shortcuts[i].x, shortcuts[i].y + 50, 0xFFFFFFFF, 1);
+            renderer.draw_string(kDesktopShortcuts[i].label, sx, sy + 50, 0xFFFFFFFF, 1);
         }
 
         // UAC Prompt Overlay
@@ -384,9 +408,10 @@ extern "C" void desktop_loop(Framebuffer* fb) {
             renderer.draw_string("NO", dialog_x + 205, dialog_y + 108, 0xFFFFFFFF, 1);
         }
 
+        // Cursor and frame present
         renderer.draw_cursor(mouseX, mouseY);
         renderer.show();
 
-        for(volatile int i=0; i<3000; i++);
+        for (volatile int i = 0; i < 1500; i++);
     }
 }

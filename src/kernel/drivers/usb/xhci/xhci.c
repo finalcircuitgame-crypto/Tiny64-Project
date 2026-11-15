@@ -38,7 +38,9 @@ static xhci_erst_entry_t *erst;
 // DCBAA - Device Context Base Address Array
 static uint64_t *dcbaa;
 
-// Forward declarations for printing
+// Port protocol mapping (USB 2.0 or USB 3.x)
+static uint8_t g_port_protocol[256];
+
 void PrintString(const char *str, uint32_t color);
 void serial_print(const char *str);
 
@@ -490,8 +492,9 @@ static int xhci_cmd_configure_intr_in_ep(xhci_device_state_t *dev) {
   // EP Type Interrupt IN = 7, CErr should be 3 for interrupt endpoints.
   // dword1: [31:16]=Max Packet Size, [15:8]=Max Burst, [7:3]=EP Type,
   // [2:0]=CErr
+  // EP Type Interrupt IN = 7, CErr should be 3 for interrupt endpoints (bits 2:1).
   ep->dword1 = ((uint32_t)(dev->intr_mps & 0xFFFFu) << 16) | (0u << 8) |
-               ((7u & 0x7u) << 3) | 3u;
+               ((7u & 0x7u) << 3) | (3u << 1);
 
   uint64_t trdp = (uint64_t)(uintptr_t)dev->intr_ring;
   trdp &= ~0xFULL;
@@ -827,6 +830,57 @@ static void xhci_bios_handoff(void) {
   }
 }
 
+static void xhci_parse_supported_protocols(void) {
+  for (int i = 0; i < 256; i++) {
+    g_port_protocol[i] = 0;
+  }
+
+  uint32_t hcc1 = cap_regs->hcc_params1;
+  uint32_t xecp = (hcc1 >> 16) & 0xFFFF;
+  if (xecp == 0)
+    return;
+
+  uint32_t off = xecp * 4;
+  while (off) {
+    volatile uint32_t *ext = (volatile uint32_t *)((uint64_t)cap_regs + off);
+    uint32_t cap = ext[0];
+    uint8_t cap_id = (uint8_t)(cap & 0xFF);
+    uint8_t next = (uint8_t)((cap >> 8) & 0xFF);
+
+    if (cap_id == 2) {
+      uint8_t major = (uint8_t)((cap >> 24) & 0xFF);
+      uint32_t dw2 = ext[2];
+      uint8_t port_offset = (uint8_t)(dw2 & 0xFF);
+      uint8_t port_count = (uint8_t)((dw2 >> 8) & 0xFF);
+
+      serial_print("[xHCI] Supported Protocol: USB ");
+      if (major == 3) {
+        serial_print("3.x");
+      } else if (major == 2) {
+        serial_print("2.0");
+      } else {
+        xhci_print_u32_dec(major);
+      }
+      serial_print(" ports: ");
+      xhci_print_u32_dec(port_offset);
+      serial_print("-");
+      xhci_print_u32_dec(port_offset + port_count - 1);
+      serial_print("\n");
+
+      for (uint32_t p = 0; p < port_count; p++) {
+        uint32_t port_idx = port_offset - 1 + p;
+        if (port_idx < 256) {
+          g_port_protocol[port_idx] = major;
+        }
+      }
+    }
+
+    if (next == 0)
+      break;
+    off += (uint32_t)next * 4;
+  }
+}
+
 static void xhci_print_hex32(uint32_t v) {
   static const char *hex = "0123456789ABCDEF";
   char s[9];
@@ -1068,7 +1122,8 @@ static int xhci_cmd_address_device(uint32_t slot_id, uint32_t port_id,
   if (speed_code == 4)
     mps = 512; // superspeed
 
-  ep0->dword1 = ((mps & 0xFFFFu) << 16) | ((4u & 0x7u) << 3);
+  // EP Type = Control (4), CErr = 3 (bits 2:1)
+  ep0->dword1 = ((mps & 0xFFFFu) << 16) | ((4u & 0x7u) << 3) | (3u << 1);
 
   uint64_t trdp = (uint64_t)(uintptr_t)ep0_ring;
   trdp &= ~0xFULL;
@@ -1185,6 +1240,9 @@ void xhci_init(uint64_t mmio_phys) {
 
   // Real hardware often requires BIOS->OS ownership handoff.
   xhci_bios_handoff();
+
+  // Parse supported protocols capability to detect USB 2.0 vs 3.0 ports
+  xhci_parse_supported_protocols();
 
   // Context size (HCCPARAMS1.CSZ): 0=32B contexts, 1=64B contexts
   g_ctx_size = (cap_regs->hcc_params1 & (1u << 2)) ? 64u : 32u;
@@ -1416,10 +1474,12 @@ void xhci_init(uint64_t mmio_phys) {
 
       ps = *portsc;
       uint32_t speed_hint = xhci_port_speed(ps);
+      uint8_t proto = g_port_protocol[i];
+      int use_warm = (proto == 3) || (proto == 0 && speed_hint == 4);
 
-      if (speed_hint == 4) {
-        // SuperSpeed: prefer Warm Port Reset
-        serial_print("[xHCI] SuperSpeed port; using Warm Reset\n");
+      if (use_warm) {
+        // SuperSpeed/USB 3.x port: prefer Warm Port Reset
+        serial_print("[xHCI] USB 3.x/SuperSpeed port; using Warm Reset\n");
         uint32_t w = ps;
         w &= ~PORTSC_W1C;
         w |= PORTSC_WPR;
