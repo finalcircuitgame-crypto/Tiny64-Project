@@ -20,6 +20,10 @@ BOOTLOADER_EFI = $(DISTDIR)/BOOTX64.EFI
 KERNEL_ELF = $(DISTDIR)/kernel.elf
 DISK_IMG = $(DISTDIR)/tiny64.img
 
+# The framebuffer console reads the embedded 8x8 CGA font.
+# objcopy exports _binary_CGA_F08_start/_end for console.c.
+FONT_OBJ = $(OBJDIR)/font.o
+
 # Example: collect kernel sources/objects (adjust to your tree)
 KERNEL_SRCS := $(shell find $(KERNELDIR) -name "*.c")
 KERNEL_ASMS := $(shell find $(KERNELDIR) -name "*.s")
@@ -39,8 +43,15 @@ $(BOOTLOADER_EFI): $(BOOTDIR)/main.c
 	$(LD) $(LDFLAGS_EFI) $(OBJDIR)/boot_main.o -o $(OBJDIR)/boot_main.so -lgnuefi -lefi
 	$(OBJCOPY) -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel -j .rela -j .reloc --target=efi-app-x86_64 $(OBJDIR)/boot_main.so $@
 
-$(KERNEL_ELF): $(KERNEL_OBJS)
-	$(LD) $(LDFLAGS_KERNEL) $(KERNEL_OBJS) -o $@
+# Turn the raw CGA font into an ELF object so its binary symbols are available
+# to the framebuffer console at link time.
+$(FONT_OBJ): CGA.F08
+	@mkdir -p $(dir $@)
+	$(OBJCOPY) -I binary -O elf64-x86-64 -B i386 $< $@
+
+$(KERNEL_ELF): $(KERNEL_OBJS) $(FONT_OBJ)
+	@mkdir -p $(dir $@)
+	$(LD) $(LDFLAGS_KERNEL) $(KERNEL_OBJS) $(FONT_OBJ) -o $@
 
 $(OBJDIR)/%.o: $(KERNELDIR)/%.c
 	@mkdir -p $(dir $@)
