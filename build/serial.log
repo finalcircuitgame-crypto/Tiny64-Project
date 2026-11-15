@@ -3,13 +3,12 @@ BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x
 Tiny64 C-Loader: Initializing...
 GOP Initialized. Checking Boot Mode...
 TRIAL file detected. Skipping Wizard...
-Loaded doom1.wad into memory.
 Kernel loaded. Exiting Boot Services...
 [PMM] Initialized
-[PMM] Total: 2079764480 bytes
-[PMM] Free:  2079764480 bytes
+[PMM] Total: 77651968 bytes
+[PMM] Free:  77651968 bytes
 [VMM] Switched to writable PML4 at 0x0000000001780000
-kmalloc: Heap initialized at 0x0000000001781000 size 134217728
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
 
 === Tiny64 Kernel Booting ===
 PCI: Scanning all buses...
@@ -32,6 +31,11 @@ xHCI: XECAP @0x0000000000000020 VAL=0x0000000002000402 ID=2 NEXT=4
 xHCI: XECAP @0x0000000000000030 VAL=0x0000000003000002 ID=2 NEXT=0
 xHCI: No USB Legacy Support Capability found, continuing without BIOS handover
 xHCI: Max Slots: 64
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
 xHCI: Power cycling 8 ports...
 xHCI: Device detected on port 5 (Status: 0x0000000000000EE1)
 xHCI: Device detected on port 6 (Status: 0x0000000000000EE1)
@@ -39,11 +43,21 @@ PCI: Scan Complete.
 System Time: 04d-02d-02d 02d:02d:02d
 Framebuffer: 0x0000000080000000 (1280x800)
 FS: Initializing RamFS...
-FS: Injected doom1.wad into RamFS.
-WAD: src@PNAMES=0x0x000000000000015E dst@PNAMES=0x0x000000000000015E
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
 Hardware: Initializing Legacy ATA...
 [ATA] Initializing Primary Master...
 [ATA] Drive Identified.
+
+=== USB TROUBLESHOOTING (REAL HARDWARE) ===
+No USB HID devices (Keyboard/Mouse) were detected immediately.
+If they do not appear within 10 seconds, try the following:
+  1. Connect directly to Motherboard ports (No Hubs).
+  2. Use USB 2.0 ports (Black) if available.
+  3. Ensure 'USB Legacy Support' & 'XHCI Handoff' are ENABLED in BIOS.
+  4. If using a gaming keyboard, switch it to 'BIOS Mode'.
+Background polling is active...
+
 [IDT] Initializing...
 [PIC] Remapping...
 [PIC] Master Mask: 0xFE (IRQ0/Timer Enabled)
@@ -53,94 +67,29 @@ Scheduler: Skipped in QEMU mode.
 Kernel initialization complete.
 
 Splash: Starting animation...
-Renderer: Allocated global back buffer at 0x0000000002613AB0
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash Update: Loading System Files...
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash Update: Initializing Kernel...
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash Update: Loading Drivers (xHCI, NVMe, AHCI)...
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash Update: Starting System Services...
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash Update: Preparing Desktop Environment...
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash Update: Boot Complete.
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 Splash: Animation finished.
+kmalloc: CRITICAL: Failed to allocate contiguous heap!
+Renderer: Failed to allocate back buffer!
 e1000: RX first frame len=64 ethertype=0x0000000000000806
 e1000: RX first ARP frame
 e1000: ARP learned gateway MAC: 0x0000000000000052:0x0000000000000055:0x000000000000000A:0x0000000000000000:0x0000000000000002:0x0000000000000002
-DOOM: Initializing Engine...
-DOOM: DG_Init
-                           Doom Generic 0.1
-Z_Init: Init zone memory allocation daemon. 
-zone memory: 0x02B02A20, 00600000 allocated for zone
-Using . for configuration and saves
-V_Init: allocate screens.
-M_LoadDefaults: Load system defaults.
-saving config in .default.cfg
-FAKE fopen: doom1.wad node=0045F8A0 size=u PNAMES_u32=00AA4920 bytes=0000015E 0000005E 00000001 00000000
-W_Init: Init WADfiles.
- adding doom1.wad
-FAKE fopen: doom1.wad node=0045F8A0 size=u PNAMES_u32=00AA4920 bytes=0000015E 0000005E 00000001 00000000
-W_AddFile: doom1.wad len=11159840
-W_AddFile: ident=IWAD numlumps=2194 dir_ofs=11124736
-Using ./.savegame/ for savegames
-===========================================================================
-                            DOOM Registered
-===========================================================================
- Doom Generic is free software, covered by the GNU General Public
- License.  There is NO warranty; not even for MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. You are welcome to change and distribute
- copies under certain conditions. See the source for more information.
-===========================================================================
-I_Init: Setting up machine state.
-M_Init: Init miscellaneous info.
-R_Init: Init DOOM refresh daemon - W_CacheLumpName: PNAMES -> lump=305 pos=2588260 size=2804
-W_CacheLumpNum: PNAMES state mapped=0x43A48000 cache=0x00000000 size=2804 pos=2588260
-W_CacheLumpNum: PNAMES cache=0x02B06F38 pre=00000053 00000041 00000052 00000047 00000045 00000033 00000000 00000000
-W_Read: WARNING: wad->file_class=0x0139002E (expected 0x003DCCA0); forcing stdc
-FAKE fread: pos=u total=u PNAMES_u32=00277E64 bytes=00000AF4 0000015E 0000005E 00000001
-W_StdC_Read: off=2588260 len=2804 read=2804 head=0000005E 00000001 00000000 00000000 00000057 00000041 0000004C 0000004C pnames@+0=0000005E 00000001 00000000 00000000
-W_CacheLumpNum: PNAMES cache=0x02B06F38 post=0000005E 00000001 00000000 00000000 00000057 00000041 0000004C 0000004C
-W_CacheLumpName: PNAMES head=0000005E 00000001 00000000 00000000 (u32=0000015E)
-FAKE fread: pos=u total=u PNAMES_u32=00275F24 bytes=00001F40 0000015E 0000005E 00000001
-W_StdC_Read: off=2580260 len=8000 read=8000 head=000000A1 00000000 00000000 00000000 00000088 00000002 00000000 00000000
-..........................
-P_Init: Init Playloop state.
-S_Init: Setting up sound.
-D_CheckNetGame: Checking network game status.
-startskill 2  deathmatch: 0  startmap: 1  startepisode: 1
-player 1 of 1 (1 nodes)
-Emulating the behavior of the 'Doom 1.9' executable.
-HU_Init: Setting up heads up display.
-ST_Init: Init status bar.
-[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1,0x1)/Ata(Primary,Master,0x0)
-BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00001 " from PciRoot(0x0)/Pci(0x1,0x1)/Ata(Primary,Master,0x0)
-Tiny64 C-Loader: Initializing...
-GOP Initialized. Checking Boot Mode...
-TRIAL file detected. Skipping Wizard...
-Loaded doom1.wad into memory.
-Kernel loaded. Exiting Boot Services...
-[PMM] Initialized
-[PMM] Total: 2079768576 bytes
-[PMM] Free:  2079768576 bytes
-[VMM] Switched to writable PML4 at 0x0000000001780000
-kmalloc: Heap initialized at 0x0000000001781000 size 134217728
-
-=== Tiny64 Kernel Booting ===
-PCI: Scanning all buses...
-PCI: First Priority - Initializing Network Drivers...
-PCI: Ethernet Controller detected at 0:3:0 ID=0x0000000000008086:0x000000000000100E
-e1000: Using legacy e1000 driver
-e1000: Initializing at 0xFFFFC00000080000
-e1000: MAC: 0x0000000000000052:0x0000000000000054:0x0000000000000000:0x0000000000000012:0x0000000000000034:0x0000000000000056
-e1000: Resetting controller...
-e1000: Reset successful.
-e1000: Initialization Complete.
-PCI: Network Test Packet Heard Successfully (e1000)
-PCI: Live network logging ENABLED.
-PCI: Initializing Remaining Drivers...
-PCI: VGA Controller VEN=0x0000000000001234 DEV=0x0000000000001111
-PCI: xHCI Controller detected at 0:4:0
-PCI: Waiting 2s after first NIC packet before xHCI init...
-xHCI: HCCPARAMS1=0x0000000000087001 XECPOFF=0x0000000000000020
-xHCI: XECAP @0x0000000000000020 VAL=0x0000000002000402 ID=2 NEXT=4
-xHCI: XECAP @0x0000000000000030 VAL=0x0000000003000002 ID=2 NEXT=0
-xHCI: No USB Legacy Support Capability found, continuing without BIOS handover
-xHCI: Max Slots: 64
-xHCI: Power cycling 8 ports...

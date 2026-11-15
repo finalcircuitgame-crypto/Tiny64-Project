@@ -61,7 +61,7 @@ cp "$OVMF_VARS_SRC" "$OVMF_VARS" || {
 
 print_step "Building project"
 MAKE_FLAGS=""
-USB_FLAGS="-device qemu-xhci,id=xhci -device usb-tablet,bus=xhci.0 -device usb-kbd,bus=xhci.0"
+USB_FLAGS="-device qemu-xhci,id=xhci -device usb-mouse,bus=xhci.0 -device usb-kbd,bus=xhci.0"
 echo -e "${YELLOW}  [!] USB Enabled (xHCI + Tablet + Keyboard)${NC}"
 MAKE_FLAGS="USE_USB=1 DISABLE_PS2=1"
 
